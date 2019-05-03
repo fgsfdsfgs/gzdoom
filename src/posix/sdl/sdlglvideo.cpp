@@ -410,6 +410,11 @@ SystemGLFrameBuffer::SystemGLFrameBuffer(void *hMonitor, bool fullscreen)
 	int i;
 
 	const char *version = Args->CheckValue("-glversion");
+#ifdef __SWITCH__
+	// HACK: checking nonexistant GL profiles fucks up EGL or SDL or something
+	//       and we know that we have 4.3 at most
+	if (version == NULL) version = "4.3";
+#endif
 	if (version != NULL)
 	{
 		double gl_version = strtod(version, NULL) + 0.01;
@@ -465,16 +470,24 @@ SystemGLFrameBuffer::~SystemGLFrameBuffer ()
 
 int SystemGLFrameBuffer::GetClientWidth()
 {
+#ifdef __SWITCH__
+	return 1920;
+#else
 	int width = 0;
 	SDL_GL_GetDrawableSize(Priv::window, &width, nullptr);
 	return width;
+#endif
 }
 
 int SystemGLFrameBuffer::GetClientHeight()
 {
+#ifdef __SWITCH__
+	return 1080;
+#else
 	int height = 0;
 	SDL_GL_GetDrawableSize(Priv::window, nullptr, &height);
 	return height;
+#endif
 }
 
 void SystemGLFrameBuffer::SetVSync( bool vsync )

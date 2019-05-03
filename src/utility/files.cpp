@@ -98,10 +98,6 @@ public:
 		if (origin == SEEK_SET)
 		{
 			offset += StartPos;
-#ifdef __SWITCH__
-			// HACK: work around the fseek bug
-			fseek(File, 0, SEEK_SET);
-#endif
 		}
 		else if (origin == SEEK_CUR)
 		{
@@ -112,6 +108,11 @@ public:
 			offset += StartPos + Length;
 		}
 		if (offset < StartPos || offset > StartPos + Length) return -1;	// out of scope
+
+#ifdef __SWITCH__
+		// HACK: work around the fseek bug
+		fseek(File, 0, SEEK_SET);
+#endif
 
 		if (0 == fseek(File, offset, SEEK_SET))
 		{

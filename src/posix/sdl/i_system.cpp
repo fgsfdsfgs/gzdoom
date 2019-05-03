@@ -405,6 +405,9 @@ void *I_FindFirst (const char *filespec, findstate_t *fileinfo)
 	}
 
 	fileinfo->current = 0;
+#ifdef __SWITCH__
+	errno = 0; // HACK: workaround for switch newlib bug #13
+#endif
 	fileinfo->count = scandir (dir.GetChars(), &fileinfo->namelist,
 							   matchfile, alphasort);
 	if (fileinfo->count > 0)
@@ -476,6 +479,7 @@ unsigned int I_MakeRNGSeed()
 	// Try reading from /dev/urandom first, then /dev/random, then
 	// if all else fails, use a crappy seed from time().
 	seed = time(NULL);
+#ifndef __SWITCH__
 	file = open("/dev/urandom", O_RDONLY);
 	if (file < 0)
 	{
@@ -486,6 +490,7 @@ unsigned int I_MakeRNGSeed()
 		read(file, &seed, sizeof(seed));
 		close(file);
 	}
+#endif
 	return seed;
 }
 

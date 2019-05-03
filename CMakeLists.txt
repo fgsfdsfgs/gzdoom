@@ -256,7 +256,9 @@ else()
 		endif()
 	elseif( SWITCH_LIBNX )
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} -D__SWITCH__ -Dstricmp=strcasecmp -Dstrnicmp=strncasecmp -D__forceinline=inline -I$ENV{PORTLIBS_PREFIX}/include -I$ENV{DEVKITPRO}/libnx/include" )
-		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-class-memaccess -fexceptions -frtti" )
+		# have to disable --gc-sections for our own objects, lest it fuck up *reg sections
+		set( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--no-gc-sections" )
+		set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-class-memaccess" )
 	elseif( NOT MINGW )
 		# Generic GCC/Clang requires position independent executable to be enabled explicitly
 		set( ALL_C_FLAGS "${ALL_C_FLAGS} -fPIE" )

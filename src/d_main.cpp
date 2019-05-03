@@ -2301,12 +2301,8 @@ void D_DoomMain (void)
 
 	D_DoomInit();
 
-	Printf("AAA\n");
-
 	extern void D_ConfirmSendStats();
 	D_ConfirmSendStats();
-
-	Printf("BBB\n");
 
 	// [RH] Make sure zdoom.pk3 is always loaded,
 	// as it contains magic stuff we need.
@@ -2317,26 +2313,20 @@ void D_DoomMain (void)
 	}
 	FString basewad = wad;
 
-	Printf("CCC\n");
 	FString optionalwad = BaseFileSearch(OPTIONALWAD, NULL, true);
 
-	Printf("DDD\n");
 	iwad_man = new FIWadManager(basewad);
 
-	Printf("EEE\n");
 	// Now that we have the IWADINFO, initialize the autoload ini sections.
 	GameConfig->DoAutoloadSetup(iwad_man);
 
-	Printf("FFF\n");
 	// reinit from here
 
 	do
 	{
 		PClass::StaticInit();
-	Printf("GGG\n");
 		PType::StaticInit();
 
-	Printf("HHH\n");
 		if (restart)
 		{
 			C_InitConsole(SCREENWIDTH, SCREENHEIGHT, false);
@@ -2346,12 +2336,9 @@ void D_DoomMain (void)
 		// Load zdoom.pk3 alone so that we can get access to the internal gameinfos before 
 		// the IWAD is known.
 
-	Printf("III\n");
 		GetCmdLineFiles(pwads);
-	Printf("JJJ\n");
 		FString iwad = CheckGameInfo(pwads);
 
-	Printf("KKK\n");
 		// The IWAD selection dialogue does not show in fullscreen so if the
 		// restart is initiated without a defined IWAD assume for now that it's not going to change.
 		if (iwad.IsEmpty()) iwad = lastIWAD;
@@ -2366,20 +2353,16 @@ void D_DoomMain (void)
 		gameinfo.ConfigName = iwad_info->Configname;
 		lastIWAD = iwad;
 
-	Printf("LLL\n");
 		if ((gameinfo.flags & GI_SHAREWARE) && pwads.Size() > 0)
 		{
 			I_FatalError ("You cannot -file with the shareware version. Register!");
 		}
 
-	Printf("MMM\n");
 		FBaseCVar::DisableCallbacks();
 		GameConfig->DoGameSetup (gameinfo.ConfigName);
 
-	Printf("NNN\n");
 		AddAutoloadFiles(iwad_info->Autoname);
 
-	Printf("OOO\n");
 		// Process automatically executed files
 		FExecList *exec;
 		FArgs *execFiles = new FArgs;
@@ -2387,24 +2370,20 @@ void D_DoomMain (void)
 		exec = D_MultiExec(execFiles, NULL);
 		delete execFiles;
 
-	Printf("PPP\n");
 		// Process .cfg files at the start of the command line.
 		execFiles = Args->GatherFiles ("-exec");
 		exec = D_MultiExec(execFiles, exec);
 		delete execFiles;
 
-	Printf("QQQ\n");
 		// [RH] process all + commands on the command line
 		exec = C_ParseCmdLineParams(exec);
 
-	Printf("RRR\n");
 		CopyFiles(allwads, pwads);
 		if (exec != NULL)
 		{
 			exec->AddPullins(allwads);
 		}
 
-	Printf("SSS\n");
 		// Since this function will never leave we must delete this array here manually.
 		pwads.Clear();
 		pwads.ShrinkToFit();
@@ -2420,7 +2399,6 @@ void D_DoomMain (void)
 		allwads.ShrinkToFit();
 		SetMapxxFlag();
 
-	Printf("TTT\n");
 		GameConfig->DoKeySetup(gameinfo.ConfigName);
 
 		// Now that wads are loaded, define mod-specific cvars.
@@ -2450,11 +2428,9 @@ void D_DoomMain (void)
 			I_Init ();
 		}
 
-	Printf("UZUU\n");
 		if (!batchrun) Printf ("V_Init: allocate screen.\n");
 		V_Init (!!restart);
 
-	Printf("uuu\n");
 		// Base systems have been inited; enable cvar callbacks
 		FBaseCVar::EnableCallbacks ();
 

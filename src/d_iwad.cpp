@@ -118,7 +118,7 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 					else if (sc.Compare("Hexen")) iwad->gametype = GAME_Hexen;
 					else if (sc.Compare("Strife")) iwad->gametype = GAME_Strife;
 					else if (sc.Compare("Chex")) iwad->gametype = GAME_Chex;
-					else sc.ScriptError("WEW LAD");
+					else sc.ScriptError(NULL);
 				}
 				else if (sc.Compare("Mapinfo"))
 				{
@@ -139,7 +139,7 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 						else if(sc.Compare("Extended")) iwad->flags |= GI_MENUHACK_EXTENDED;
 						else if(sc.Compare("Shorttex")) iwad->flags |= GI_COMPATSHORTTEX;
 						else if(sc.Compare("Stairs")) iwad->flags |= GI_COMPATSTAIRS;
-						else sc.ScriptError("WEW LAD 2");
+						else sc.ScriptError(NULL);
 					}
 					while (sc.CheckString(","));
 				}
@@ -422,6 +422,12 @@ void FIWadManager::CollectSearchPaths()
 	}
 	mSearchPaths.Append(I_GetGogPaths());
 	mSearchPaths.Append(I_GetSteamPath());
+#ifdef __SWITCH__
+	mSearchPaths.Push(NicePath("sdmc:/switch/gzdoom/iwads"));
+	mSearchPaths.Push(NicePath("sdmc:/switch/gzdoom"));
+	mSearchPaths.Push(NicePath("./iwads"));
+	mSearchPaths.Push(NicePath("."));
+#endif
 
 	// Unify and remove trailing slashes
 	for (auto &str : mSearchPaths)
@@ -445,6 +451,7 @@ void FIWadManager::AddIWADCandidates(const char *dir)
 	findstate_t findstate;
 	FStringf slasheddir("%s/", dir);
 	FString findmask = slasheddir + "*.*";
+
 	if ((handle = I_FindFirst(findmask, &findstate)) != (void *)-1)
 	{
 		do

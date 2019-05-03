@@ -879,6 +879,7 @@ void WriteLineToLog(FILE *LogFile, const char *outline)
 int PrintString (int iprintlevel, const char *outline)
 {
 	int printlevel = iprintlevel & PRINT_TYPES;
+
 	if (printlevel < msglevel || *outline == '\0')
 	{
 		return 0;
