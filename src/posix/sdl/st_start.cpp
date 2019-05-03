@@ -36,7 +36,9 @@
 
 #include <unistd.h>
 #include <sys/time.h>
+#ifndef __SWITCH__
 #include <termios.h>
+#endif
 
 #include "st_start.h"
 #include "doomdef.h"
@@ -63,7 +65,9 @@ class FTTYStartupScreen : public FStartupScreen
 		bool DidNetInit;
 		int NetMaxPos, NetCurPos;
 		const char *TheNetMessage;
+#ifndef __SWITCH__
 		termios OldTermIOS;
+#endif
 };
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
@@ -183,6 +187,7 @@ void FTTYStartupScreen::NetInit(const char *message, int numplayers)
 {
 	if (!DidNetInit)
 	{
+#ifndef __SWITCH__
 		termios rawtermios;
 
 		fprintf (stderr, "Press 'Q' to abort network game synchronization.");
@@ -192,6 +197,7 @@ void FTTYStartupScreen::NetInit(const char *message, int numplayers)
 		rawtermios = OldTermIOS;
 		rawtermios.c_lflag &= ~(ICANON | ECHO);
 		tcsetattr (STDIN_FILENO, TCSANOW, &rawtermios);
+#endif
 		DidNetInit = true;
 	}
 	if (numplayers == 1)
@@ -223,7 +229,9 @@ void FTTYStartupScreen::NetDone()
 	// Restore stdin settings
 	if (DidNetInit)
 	{
+#ifndef __SWITCH__
 		tcsetattr (STDIN_FILENO, TCSANOW, &OldTermIOS);
+#endif
 		printf ("\n");
 		DidNetInit = false;
 	}
@@ -334,6 +342,7 @@ bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 				return true;
 			}
 		}
+#ifndef __SWITCH__
 		else if (read (STDIN_FILENO, &k, 1) == 1)
 		{
 			// Check input on stdin
@@ -343,6 +352,7 @@ bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 				return false;
 			}
 		}
+#endif
 	}
 }
 

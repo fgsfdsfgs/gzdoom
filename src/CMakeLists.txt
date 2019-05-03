@@ -524,6 +524,8 @@ set( PLAT_SDL_SOURCES
 set( PLAT_UNIX_SOURCES
 	posix/unix/i_specialpaths.cpp
 	posix/unix/gtk_dialogs.cpp )
+set( PLAT_NX_SOURCES
+	posix/nx/i_specialpaths.cpp )
 set( PLAT_OSX_SOURCES
 	posix/osx/iwadpicker_cocoa.mm
 	posix/osx/i_specialpaths.mm
@@ -560,6 +562,10 @@ elseif( APPLE )
 
 	set_source_files_properties( posix/osx/zdoom.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources )
 	set_source_files_properties( posix/osx/iwadpicker_cocoa.mm PROPERTIES COMPILE_FLAGS -fobjc-exceptions )
+elseif( SWITCH_LIBNX )
+	set( SYSTEM_SOURCES_DIR posix posix/sdl )
+	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_NX_SOURCES} )
+	set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} )
 else()
 	set( SYSTEM_SOURCES_DIR posix posix/sdl )
 	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES} )
@@ -1340,7 +1346,14 @@ if( UNIX )
 	endif()
 endif()
 
-target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
+if( SWITCH_LIBNX )
+	include_directories( ${CMAKE_SOURCE_DIR}/nx/gdtoa )
+	LIST( REMOVE_ITEM ZDOOM_LIBS dl )
+	set( ZDOOM_LIBS ${ZDOOM_LIBS} vorbisfile vorbisenc vorbis ogg mpg123 flac opus EGL glapi drm_nouveau nx )
+	target_link_libraries( zdoom gdtoa dumb lzma ${ZDOOM_LIBS} )
+else()
+	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
+endif()
 
 include_directories( .
 	g_statusbar
@@ -1406,6 +1419,12 @@ if( NOT WIN32 AND NOT APPLE )
 	add_custom_command( TARGET zdoom POST_BUILD
 		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
 		COMMAND /bin/sh -c ${CMAKE_CURRENT_BINARY_DIR}/link-make )
+endif()
+
+if( SWITCH_LIBNX )
+	add_custom_command( TARGET zdoom POST_BUILD
+		COMMAND aarch64-none-elf-strip -o ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom
+		COMMAND elf2nro ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom.nro --icon=${CMAKE_SOURCE_DIR}/nx/gzdoom.jpg --nacp=${CMAKE_SOURCE_DIR}/nx/gzdoom.nacp )
 endif()
 
 add_custom_command(TARGET zdoom POST_BUILD

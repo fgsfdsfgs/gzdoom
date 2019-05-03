@@ -37,7 +37,7 @@
 #include <sys/stat.h>
 #ifdef _WIN32
 #include <io.h>
-#else
+#elif !defined (__SWITCH__)
 #include <fts.h>
 #endif
 
@@ -168,6 +168,16 @@ int FDirectory::AddDirectory(const char *dirpath)
 		_findclose(handle);
 	}
 	return count;
+}
+
+#elif defined (__SWITCH__)
+
+// there's no fts on the switch
+// TODO: implement this
+
+int FDirectory::AddDirectory(const char *dirpath)
+{
+	return 0;
 }
 
 #else

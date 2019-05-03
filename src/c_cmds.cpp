@@ -492,7 +492,7 @@ void execLogfile(const char *fn, bool append)
 	}
 	else
 	{
-		Printf("Could not start log\n");
+		Printf("Could not start log (%s)\n", fn);
 	}
 }
 

@@ -15,6 +15,7 @@
 #include <signal.h>
 #endif
 
+#ifndef __SWITCH__
 
 static const char crash_switch[] = "--cc-handle-crash";
 
@@ -423,3 +424,13 @@ int cc_install_handlers(int argc, char **argv, int num_signals, int *signals, co
 	}
 	return retval;
 }
+
+#else // __SWITCH__
+
+int cc_install_handlers(int argc, char **argv, int num_signals, int *signals, const char *logfile, int (*user_info)(char*, char*))
+{
+	// TODO: install a custom exception handler
+	return -1;
+}
+
+#endif // __SWITCH__

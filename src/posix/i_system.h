@@ -148,6 +148,7 @@ inline const char *I_FindName(findstate_t *fileinfo)
 #define FA_DIREC	8
 #define FA_ARCH		16
 
+#ifndef __SWITCH__
 static inline char *strlwr(char *str)
 {
 	char *ptr = str;
@@ -158,6 +159,7 @@ static inline char *strlwr(char *str)
 	}
 	return str;
 }
+#endif
 
 inline int I_GetNumaNodeCount() { return 1; }
 inline int I_GetNumaNodeThreadCount(int numaNode) { return std::max<int>(std::thread::hardware_concurrency(), 1); }

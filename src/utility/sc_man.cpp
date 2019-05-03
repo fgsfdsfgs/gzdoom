@@ -1094,8 +1094,8 @@ void FScanner::ScriptError (const char *message, ...)
 		va_end (arglist);
 	}
 
-	I_Error ("Script error, \"%s\" line %d:\n%s\n", ScriptName.GetChars(),
-		AlreadyGot? AlreadyGotLine : Line, composed.GetChars());
+	I_Error ("Script error, \"%s\" line %d:\n%s\n%s\n%s\n\n", ScriptName.GetChars(),
+		AlreadyGot? AlreadyGotLine : Line, composed.GetChars(), StringBuffer, BigStringBuffer.GetChars());
 }
 
 //==========================================================================

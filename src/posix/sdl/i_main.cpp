@@ -40,6 +40,9 @@
 #include <new>
 #include <sys/param.h>
 #include <locale.h>
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
 
 #include "doomerrors.h"
 #include "m_argv.h"
@@ -191,25 +194,33 @@ void I_ShutdownJoysticks();
 
 int main (int argc, char **argv)
 {
-#if !defined (__APPLE__)
+#if !defined (__APPLE__) && !defined (__SWITCH__)
 	{
 		int s[4] = { SIGSEGV, SIGILL, SIGFPE, SIGBUS };
 		cc_install_handlers(argc, argv, 4, s, GAMENAMELOWERCASE "-crash.log", DoomSpecificInfo);
 	}
-#endif // !__APPLE__
+#endif // !__APPLE__ && !__SWITCH__
 
 	printf(GAMENAME" %s - %s - SDL version\nCompiled on %s\n",
 		GetVersionString(), GetGitTime(), __DATE__);
 
+#ifdef __SWITCH__
+	extern int nxlink_socket;
+	socketInitializeDefault();
+	nxlink_socket = nxlinkStdio();
+#else
 	seteuid (getuid ());
+#endif
     std::set_new_handler (NewFailure);
 
+#ifndef __SWITCH__
 	// Set LC_NUMERIC environment variable in case some library decides to
 	// clear the setlocale call at least this will be correct.
 	// Note that the LANG environment variable is overridden by LC_*
 	setenv ("LC_NUMERIC", "C", 1);
 
 	setlocale (LC_ALL, "C");
+#endif
 
 	if (SDL_Init (0) < 0)
 	{
@@ -244,6 +255,7 @@ int main (int argc, char **argv)
 		atterm (I_Quit);
 
 		// Should we even be doing anything with progdir on Unix systems?
+#ifndef __SWITCH__
 		char program[PATH_MAX];
 		if (realpath (argv[0], program) == NULL)
 			strcpy (program, argv[0]);
@@ -254,6 +266,7 @@ int main (int argc, char **argv)
 			progdir = program;
 		}
 		else
+#endif
 		{
 			progdir = "./";
 		}

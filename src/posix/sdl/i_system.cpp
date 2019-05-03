@@ -35,6 +35,10 @@
 
 #include <SDL.h>
 
+#ifdef __SWITCH__
+#include <switch.h>
+#endif
+
 #include "doomerrors.h"
 
 #include "doomtype.h"
@@ -68,6 +72,10 @@ int I_PickIWad_Gtk (WadStuff *wads, int numwads, bool showwin, int defaultiwad);
 void I_FatalError_Gtk(const char* errortext);
 #elif defined(__APPLE__)
 int I_PickIWad_Cocoa (WadStuff *wads, int numwads, bool showwin, int defaultiwad);
+#endif
+
+#ifdef __SWITCH__
+int nxlink_socket = -1;
 #endif
 
 double PerfToSec, PerfToMillisec;
@@ -117,6 +125,17 @@ void I_Quit (void)
 		G_CheckDemoStatus();
 
 	C_DeinitConsole();
+
+#ifdef __SWITCH__
+	fflush(stdout);
+	fflush(stderr);
+	if (nxlink_socket >= 0)
+	{
+		close(nxlink_socket);
+		nxlink_socket = -1;
+	}
+	socketExit();
+#endif
 }
 
 
@@ -130,7 +149,7 @@ bool gameisdead;
 void Mac_I_FatalError(const char* errortext);
 #endif
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__SWITCH__)
 void Linux_I_FatalError(const char* errortext)
 {
 	// Close window or exit fullscreen and release mouse capture
@@ -177,7 +196,7 @@ void I_FatalError (const char *error, va_list ap)
 		Mac_I_FatalError(errortext);
 #endif // __APPLE__		
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__SWITCH__)
 		Linux_I_FatalError(errortext);
 #endif
 		
@@ -189,6 +208,7 @@ void I_FatalError (const char *error, va_list ap)
 		}
 //		throw CFatalError (errortext);
 		fprintf (stderr, "%s\n", errortext);
+		fflush (stderr);
 		exit (-1);
 	}
 
@@ -217,6 +237,8 @@ void I_Error (const char *error, ...)
 
 	myvsnprintf (errortext, MAX_ERRORTEXT, error, argptr);
 	va_end (argptr);
+	fprintf (stderr, "ERROR: %s\n", errortext);
+	fflush (stderr);
 	throw CRecoverableError(errortext);
 }
 
@@ -255,6 +277,9 @@ void I_PrintStr(const char *cp)
 
 int I_PickIWad (WadStuff *wads, int numwads, bool showwin, int defaultiwad)
 {
+#ifdef __SWITCH__
+	return defaultiwad; // TODO: make a launcher
+#else
 	int i;
 
 	if (!showwin)
@@ -340,6 +365,7 @@ int I_PickIWad (WadStuff *wads, int numwads, bool showwin, int defaultiwad)
 	if (scanf ("%d", &i) != 1 || i > numwads)
 		return -1;
 	return i-1;
+#endif // __SWITCH__
 }
 
 bool I_WriteIniFailed ()

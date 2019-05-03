@@ -296,7 +296,7 @@ void SystemGLFrameBuffer::SetVSync( bool vsync )
 
 void SystemGLFrameBuffer::SwapBuffers()
 {
-#if !defined(__APPLE__) && !defined(__OpenBSD__)
+#if !defined(__APPLE__) && !defined(__OpenBSD__) && !defined(__SWITCH__)
 	if (vid_maxfps && !cl_capfps)
 	{
 		SEMAPHORE_WAIT(FPSLimitSemaphore)

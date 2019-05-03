@@ -118,7 +118,7 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 					else if (sc.Compare("Hexen")) iwad->gametype = GAME_Hexen;
 					else if (sc.Compare("Strife")) iwad->gametype = GAME_Strife;
 					else if (sc.Compare("Chex")) iwad->gametype = GAME_Chex;
-					else sc.ScriptError(NULL);
+					else sc.ScriptError("WEW LAD");
 				}
 				else if (sc.Compare("Mapinfo"))
 				{
@@ -139,7 +139,7 @@ void FIWadManager::ParseIWadInfo(const char *fn, const char *data, int datasize,
 						else if(sc.Compare("Extended")) iwad->flags |= GI_MENUHACK_EXTENDED;
 						else if(sc.Compare("Shorttex")) iwad->flags |= GI_COMPATSHORTTEX;
 						else if(sc.Compare("Stairs")) iwad->flags |= GI_COMPATSTAIRS;
-						else sc.ScriptError(NULL);
+						else sc.ScriptError("WEW LAD 2");
 					}
 					while (sc.CheckString(","));
 				}
@@ -679,6 +679,10 @@ int FIWadManager::IdentifyVersion (TArray<FString> &wadfiles, const char *iwad, 
 #elif defined(__APPLE__)
 					  "1. Place one or more of these wads in ~/Library/Application Support/" GAMENAMELOWERCASE "/\n"
 					  "2. Edit your ~/Library/Preferences/" GAMENAMELOWERCASE ".ini and add the directories\n"
+					  "of your iwads to the list beneath [IWADSearch.Directories]");
+#elif defined(__SWITCH__)
+					  "1. Place one or more of these wads in sdmc:/switch/" GAMENAMELOWERCASE "/iwads\n"
+					  "2. Edit your sdmc:/switch/" GAMENAMELOWERCASE ".ini and add the directories\n"
 					  "of your iwads to the list beneath [IWADSearch.Directories]");
 #else
 					  "1. Place one or more of these wads in ~/.config/" GAMENAMELOWERCASE "/.\n"

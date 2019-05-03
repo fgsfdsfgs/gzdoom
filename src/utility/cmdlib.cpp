@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
-#if !defined(__sun)
+#if !defined(__sun) && !defined(__SWITCH__)
 #include <fts.h>
 #endif
 #endif
@@ -852,8 +852,10 @@ FString ExpandEnvVars(const char *searchpathstring)
 
 FString NicePath(const char *path)
 {
-#ifdef _WIN32
+#if defined(_WIN32)
 	return ExpandEnvVars(path);
+#elif defined(__SWITCH__)
+	return FString(path);
 #else
 	if (path == NULL || *path == '\0')
 	{
@@ -956,7 +958,7 @@ void ScanDirectory(TArray<FFileList> &list, const char *dirpath)
 	}
 }
 
-#elif defined(__sun) || defined(__linux__)
+#elif defined(__sun) || defined(__linux__) || defined(__SWITCH__)
 
 //==========================================================================
 //

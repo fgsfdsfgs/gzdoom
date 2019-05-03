@@ -40,7 +40,12 @@
 #include <dlfcn.h>
 #endif
 
-#ifndef _WIN32
+#ifdef __SWITCH__
+#define LoadLibraryA(x) (nullptr)
+#define GetProcAddress(a,b) (nullptr)
+#define FreeLibrary(x) do {} while(0)
+using HMODULE = void*;
+#elif !defined(_WIN32)
 #define LoadLibraryA(x) dlopen((x), RTLD_LAZY)
 #define GetProcAddress(a,b) dlsym((a),(b))
 #define FreeLibrary(x) dlclose((x))
