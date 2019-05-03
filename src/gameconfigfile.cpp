@@ -98,6 +98,10 @@ FGameConfigFile::FGameConfigFile ()
 		SetValueForKey ("Path", user_app_support, true);
 		SetValueForKey ("Path", "$PROGDIR", true);
 		SetValueForKey ("Path", local_app_support, true);
+#elif defined(__SWITCH__)
+		SetValueForKey ("Path", "./iwads", true);
+		SetValueForKey ("Path", "/switch/gzdoom/iwads", true);
+		SetValueForKey ("Path", "/switch/gzdoom", true);
 #elif !defined(__unix__)
 		SetValueForKey ("Path", "$HOME", true);
 		SetValueForKey ("Path", "$PROGDIR", true);
@@ -122,6 +126,11 @@ FGameConfigFile::FGameConfigFile ()
 		SetValueForKey ("Path", user_app_support, true);
 		SetValueForKey ("Path", "$PROGDIR", true);
 		SetValueForKey ("Path", local_app_support, true);
+#elif defined(__SWITCH__)
+		SetValueForKey ("Path", "./pwads", true);
+		SetValueForKey ("Path", "/switch/gzdoom/pwads", true);
+		SetValueForKey ("Path", "/switch/gzdoom", true);
+		SetValueForKey ("Path", ".", true);
 #elif !defined(__unix__)
 		SetValueForKey ("Path", "$PROGDIR", true);
 #else
@@ -148,6 +157,11 @@ FGameConfigFile::FGameConfigFile ()
 		SetValueForKey("Path", "$PROGDIR/fm_banks", true);
 		SetValueForKey("Path", local_app_support + "/soundfonts", true);
 		SetValueForKey("Path", local_app_support + "/fm_banks", true);
+#elif defined(__SWITCH__)
+		SetValueForKey("Path", "./soundfonts", true);
+		SetValueForKey("Path", "./fm_banks", true);
+		SetValueForKey("Path", "/switch/gzdoom/soundfonts", true);
+		SetValueForKey("Path", "/switch/gzdoom/fm_banks", true);
 #elif !defined(__unix__)
 		SetValueForKey("Path", "$PROGDIR/soundfonts", true);
 		SetValueForKey("Path", "$PROGDIR/fm_banks", true);

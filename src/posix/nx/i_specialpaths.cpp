@@ -47,12 +47,12 @@ FString GetUserFile (const char *file)
 	FString path;
 	struct stat info;
 
-	path = NicePath("/switch/" GAME_DIR "/");
+	path = NicePath("./");
 
 	if (stat (path, &info) == -1)
-		I_FatalError ("/switch/" GAME_DIR "/ does not exist");
+		I_FatalError ("Path does not exist: `%s`", path.GetChars());
 	else if (!S_ISDIR(info.st_mode))
-		I_FatalError ("%s must be a directory", path.GetChars());
+		I_FatalError ("`%s` must be a directory", path.GetChars());
 
 	path += file;
 	return path;
@@ -68,7 +68,7 @@ FString GetUserFile (const char *file)
 
 FString M_GetAppDataPath(bool create)
 {
-	FString path = NicePath("/switch/" GAMENAMELOWERCASE);
+	FString path = NicePath("./");
 	if (create)
 	{
 		CreatePath(path);
@@ -86,7 +86,7 @@ FString M_GetAppDataPath(bool create)
 
 FString M_GetCachePath(bool create)
 {
-	FString path = NicePath("/switch/" GAME_DIR "/cache");
+	FString path = NicePath("./cache/");
 	if (create)
 	{
 		CreatePath(path);
@@ -159,7 +159,7 @@ FString M_GetConfigPath(bool for_reading)
 
 FString M_GetScreenshotsPath()
 {
-	return NicePath("/switch/" GAME_DIR "/screenshots/");
+	return NicePath("./screenshots/");
 }
 
 //===========================================================================
@@ -172,7 +172,7 @@ FString M_GetScreenshotsPath()
 
 FString M_GetSavegamesPath()
 {
-	return NicePath("/switch/" GAME_DIR "/save");
+	return NicePath("./save/");
 }
 
 //===========================================================================
@@ -185,5 +185,5 @@ FString M_GetSavegamesPath()
 
 FString M_GetDocumentsPath()
 {
-	return NicePath("/switch/" GAME_DIR);
+	return NicePath("./");
 }
