@@ -359,6 +359,8 @@ sector_t *VulkanFrameBuffer::RenderView(player_t *player)
 	sector_t *retsec;
 	if (!V_IsHardwareRenderer())
 	{
+		mPostprocess->SetActiveRenderTarget();
+
 		if (!swdrawer) swdrawer.reset(new SWSceneDrawer);
 		retsec = swdrawer->RenderView(player);
 	}
@@ -843,7 +845,8 @@ void VulkanFrameBuffer::PopGroup()
 void VulkanFrameBuffer::UpdateGpuStats()
 {
 	uint64_t timestamps[MaxTimestampQueries];
-	mTimestampQueryPool->getResults(0, mNextTimestampQuery, sizeof(uint64_t) * mNextTimestampQuery, timestamps, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+	if (mNextTimestampQuery > 0)
+		mTimestampQueryPool->getResults(0, mNextTimestampQuery, sizeof(uint64_t) * mNextTimestampQuery, timestamps, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
 
 	double timestampPeriod = device->PhysicalDevice.Properties.limits.timestampPeriod;
 
