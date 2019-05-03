@@ -71,6 +71,7 @@
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
 static int TranslationMapCompare (const void *a, const void *b);
+void UpdateGenericUI(bool cvar);
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
 
@@ -777,7 +778,7 @@ void InitLowerUpper()
 	{
 		auto lower = loweruppercase[i];
 		auto upper = loweruppercase[i + 1];
-		if (upperforlower[upper] == upper) lowerforupper[upper] = lower;	// This mapping is ambiguous (see 0x0131 -> 0x0049, (small Turkish 'i' without dot.) so only pick the first match.
+		if (lowerforupper[upper] == upper) lowerforupper[upper] = lower;	// This mapping is ambiguous (see 0x0131 -> 0x0049, (small Turkish 'i' without dot.) so only pick the first match.
 		if (upperforlower[lower] == lower) upperforlower[lower] = upper;
 		isuppermap[upper] = islowermap[lower] = true;
 	}
@@ -848,7 +849,7 @@ int stripaccent(int code)
 		else if (code == 0x171) code = 0xfc;
 		else
 		{
-			static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZz ";
+			static const char accentless[] = "AaAaAaCcCcCcCcDdDdEeEeEeEeEeGgGgGgGgHhHhIiIiIiIiIiIiJjKkkLlLlLlLlLlNnNnNnnNnOoOoOoOoRrRrRrSsSsSsSsTtTtTtUuUuUuUuUuUuWwYyYZzZzZzs";
 			return accentless[code - 0x100];
 		}
 	}
@@ -907,14 +908,14 @@ int stripaccent(int code)
 
 	}
 	
-	// skip the rest of Latin characters because none of them are relevant for modern languages.
+	// skip the rest of Latin characters because none of them are relevant for modern languages, except Vietnamese which cannot be represented with the tiny bitmap fonts anyway.
 	
 	return code;
 }
 
 FFont *V_GetFont(const char *name, const char *fontlumpname)
 {
-	if (!stricmp(name, "DBIGFONT")) name = "BigFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
+	if (!stricmp(name, "DBIGFONT")) name = "BigFont";
 	else if (!stricmp(name, "CONFONT")) name = "ConsoleFont";	// several mods have used the name CONFONT directly and effectively duplicated the font.
 	FFont *font = FFont::FindFont (name);
 	if (font == nullptr)
@@ -1497,14 +1498,48 @@ void V_InitFonts()
 	{
 		if (Wads.CheckNumForName("FONTA_S") >= 0)
 		{
-			SmallFont = new FFont("SmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
-			SmallFont->SetCursor('[');
+			int wadfile = -1;
+			auto a = Wads.CheckNumForName("FONTA33", ns_graphics);
+			if (a != -1) wadfile = Wads.GetLumpFile(a);
+			if (wadfile > Wads.GetIwadNum())
+			{
+				// The font has been replaced, so we need to create a copy of the original as well.
+				SmallFont = new FFont("SmallFont", "FONTA%02u", nullptr, HU_FONTSTART, HU_FONTSIZE, 1, -1);
+				SmallFont->SetCursor('[');
+			}
+			else
+			{
+				SmallFont = new FFont("SmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
+				SmallFont->SetCursor('[');
+			}
+			OriginalSmallFont = new FFont("OriginalSmallFont", "FONTA%02u", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
+			OriginalSmallFont->SetCursor('[');
 		}
 		else if (Wads.CheckNumForName("STCFN033", ns_graphics) >= 0)
 		{
-			SmallFont = new FFont("SmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
+			int wadfile = -1;
+			auto a = Wads.CheckNumForName("STCFN065", ns_graphics);
+			if (a != -1) wadfile = Wads.GetLumpFile(a);
+			if (wadfile > Wads.GetIwadNum())
+			{
+				// The font has been replaced, so we need to create a copy of the original as well.
+				SmallFont = new FFont("SmallFont", "STCFN%.3d", nullptr, HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
+			}
+			else
+			{
+				SmallFont = new FFont("SmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1);
+			}
+			OriginalSmallFont = new FFont("OriginalSmallFont", "STCFN%.3d", "defsmallfont", HU_FONTSTART, HU_FONTSIZE, HU_FONTSTART, -1, -1, false, true);
 		}
 	}
+	if (SmallFont)
+	{
+		uint32_t colors[256] = {};
+		SmallFont->RecordAllTextureColors(colors);
+		if (OriginalSmallFont != nullptr) OriginalSmallFont->SetDefaultTranslation(colors);
+		NewSmallFont->SetDefaultTranslation(colors);
+	}
+
 	if (!(SmallFont2 = V_GetFont("SmallFont2")))	// Only used by Strife
 	{
 		if (Wads.CheckNumForName("STBFN033", ns_graphics) >= 0)
@@ -1522,6 +1557,22 @@ void V_InitFonts()
 		{
 			BigFont = new FFont("BigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1);
 		}
+	}
+
+	if (gameinfo.gametype & GAME_Raven)
+	{
+		OriginalBigFont = new FFont("OriginalBigFont", "FONTB%02u", "defbigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
+	}
+	else
+	{
+		OriginalBigFont = new FFont("OriginalBigFont", nullptr, "bigfont", HU_FONTSTART, HU_FONTSIZE, 1, -1, -1, false, true);
+	}
+
+	if (BigFont)
+	{
+		uint32_t colors[256] = {};
+		BigFont->RecordAllTextureColors(colors);
+		if (OriginalBigFont != nullptr) OriginalBigFont->SetDefaultTranslation(colors);
 	}
 
 	// let PWAD BIGFONTs override the stock BIGUPPER font. (This check needs to be made smarter.)
@@ -1558,7 +1609,7 @@ void V_InitFonts()
 	// SmallFont and SmallFont2 have no default provided by the engine. BigFont only has in non-Raven games.
 	if (SmallFont == nullptr)
 	{
-		SmallFont = ConFont;
+		SmallFont = OriginalSmallFont;
 	}
 	if (SmallFont2 == nullptr)
 	{
@@ -1566,8 +1617,10 @@ void V_InitFonts()
 	}
 	if (BigFont == nullptr)
 	{
-		BigFont = SmallFont;
+		BigFont = OriginalBigFont;
 	}
+	AlternativeSmallFont = OriginalSmallFont;
+	UpdateGenericUI(false);
 }
 
 void V_ClearFonts()
@@ -1577,6 +1630,6 @@ void V_ClearFonts()
 		delete FFont::FirstFont;
 	}
 	FFont::FirstFont = nullptr;
-	CurrentConsoleFont = NewSmallFont = NewConsoleFont = SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
+	AlternativeSmallFont = OriginalSmallFont = CurrentConsoleFont = NewSmallFont = NewConsoleFont = SmallFont = SmallFont2 = BigFont = ConFont = IntermissionFont = nullptr;
 }
 

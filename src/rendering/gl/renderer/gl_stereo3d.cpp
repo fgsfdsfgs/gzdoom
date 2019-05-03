@@ -32,8 +32,7 @@
 #include "gl/system/gl_framebuffer.h"
 #include "gl/renderer/gl_postprocessstate.h"
 #include "gl/system/gl_framebuffer.h"
-#include "hwrenderer/postprocessing/hw_presentshader.h"
-#include "hwrenderer/postprocessing/hw_present3dRowshader.h"
+#include "gl/shaders/gl_shaderprogram.h"
 #include "menu/menu.h"
 
 EXTERN_CVAR(Int, vr_mode)
@@ -151,7 +150,7 @@ void FGLRenderer::prepareInterleavedPresent(FPresentShaderBase& shader)
 	const IntRect& box = screen->mOutputLetterbox;
 	glViewport(box.left, box.top, box.width, box.height);
 
-	shader.Bind(NOQUEUE);
+	shader.Bind();
 
 	if (framebuffer->IsHWGammaActive())
 	{
@@ -168,11 +167,13 @@ void FGLRenderer::prepareInterleavedPresent(FPresentShaderBase& shader)
 		shader.Uniforms->Saturation = clamp<float>(vid_saturation, -15.0f, 15.0f);
 		shader.Uniforms->GrayFormula = static_cast<int>(gl_satformula);
 	}
+	shader.Uniforms->HdrMode = 0;
 	shader.Uniforms->ColorScale = (gl_dither_bpc == -1) ? 255.0f : (float)((1 << gl_dither_bpc) - 1);
 	shader.Uniforms->Scale = {
 		screen->mScreenViewport.width / (float)mBuffers->GetWidth(),
 		screen->mScreenViewport.height / (float)mBuffers->GetHeight()
 	};
+	shader.Uniforms->Offset = { 0.0f, 0.0f };
 	shader.Uniforms.Set();
 }
 

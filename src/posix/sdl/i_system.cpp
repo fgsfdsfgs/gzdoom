@@ -76,6 +76,19 @@ int I_PickIWad_Cocoa (WadStuff *wads, int numwads, bool showwin, int defaultiwad
 
 #ifdef __SWITCH__
 int nxlink_socket = -1;
+
+static int nxlink_sock = -1;
+
+extern "C" void userAppInit(void) {
+	socketInitializeDefault();
+	nxlink_sock = nxlinkStdio();
+}
+
+extern "C" void userAppExit(void) {
+	if (nxlink_sock != -1)
+		close(nxlink_sock);
+	socketExit();
+}
 #endif
 
 double PerfToSec, PerfToMillisec;
@@ -125,17 +138,6 @@ void I_Quit (void)
 		G_CheckDemoStatus();
 
 	C_DeinitConsole();
-
-#ifdef __SWITCH__
-	fflush(stdout);
-	fflush(stderr);
-	if (nxlink_socket >= 0)
-	{
-		close(nxlink_socket);
-		nxlink_socket = -1;
-	}
-	socketExit();
-#endif
 }
 
 

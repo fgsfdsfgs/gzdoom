@@ -204,11 +204,7 @@ int main (int argc, char **argv)
 	printf(GAMENAME" %s - %s - SDL version\nCompiled on %s\n",
 		GetVersionString(), GetGitTime(), __DATE__);
 
-#ifdef __SWITCH__
-	extern int nxlink_socket;
-	socketInitializeDefault();
-	nxlink_socket = nxlinkStdio();
-#else
+#ifndef __SWITCH__
 	seteuid (getuid ());
 #endif
     std::set_new_handler (NewFailure);

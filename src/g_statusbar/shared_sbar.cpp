@@ -388,6 +388,47 @@ void DBaseStatusBar::SetSize(int reltop, int hres, int vres, int hhres, int hvre
 	SetDrawSize(reltop, hres, vres);
 }
 
+static void ST_CalcCleanFacs(int designwidth, int designheight, int realwidth, int realheight, int *cleanx, int *cleany)
+{
+	float ratio;
+	int cwidth;
+	int cheight;
+	int cx1, cy1, cx2, cy2;
+
+	ratio = ActiveRatio(realwidth, realheight);
+	if (AspectTallerThanWide(ratio))
+	{
+		cwidth = realwidth;
+		cheight = realheight * AspectMultiplier(ratio) / 48;
+	}
+	else
+	{
+		cwidth = realwidth * AspectMultiplier(ratio) / 48;
+		cheight = realheight;
+	}
+	// Use whichever pair of cwidth/cheight or width/height that produces less difference
+	// between CleanXfac and CleanYfac.
+	cx1 = MAX(cwidth / designwidth, 1);
+	cy1 = MAX(cheight / designheight, 1);
+	cx2 = MAX(realwidth / designwidth, 1);
+	cy2 = MAX(realheight / designheight, 1);
+	if (abs(cx1 - cy1) <= abs(cx2 - cy2) || MAX(cx1, cx2) >= 4)
+	{ // e.g. 640x360 looks better with this.
+		*cleanx = cx1;
+		*cleany = cy1;
+	}
+	else
+	{ // e.g. 720x480 looks better with this.
+		*cleanx = cx2;
+		*cleany = cy2;
+	}
+
+	if (*cleanx < *cleany)
+		*cleany = *cleanx;
+	else
+		*cleanx = *cleany;
+}
+
 void DBaseStatusBar::SetDrawSize(int reltop, int hres, int vres)
 {
 	ValidateResolution(hres, vres);
@@ -396,7 +437,7 @@ void DBaseStatusBar::SetDrawSize(int reltop, int hres, int vres)
 	HorizontalResolution = hres;
 	VerticalResolution = vres;
 	int x, y;
-	V_CalcCleanFacs(hres, vres, SCREENWIDTH, SCREENHEIGHT, &x, &y);
+	ST_CalcCleanFacs(hres, vres, SCREENWIDTH, SCREENHEIGHT, &x, &y);
 	defaultScale = { (double)x, (double)y };
 
 	SetScale();	// recalculate positioning info.
@@ -556,6 +597,7 @@ void DBaseStatusBar::DoDrawAutomapHUD(int crdefault, int highlight)
 {
 	auto scale = GetUIScale(hud_scale);
 	auto font = generic_ui ? NewSmallFont : SmallFont;
+	auto font2 = font;
 	auto vwidth = screen->GetWidth() / scale;
 	auto vheight = screen->GetHeight() / scale;
 	auto fheight = font->GetHeight();
@@ -564,6 +606,12 @@ void DBaseStatusBar::DoDrawAutomapHUD(int crdefault, int highlight)
 	int y = 0;
 	int textdist = 4;
 	int zerowidth = font->GetCharWidth('0');
+
+	if (!generic_ui)
+	{
+		// If the original font does not have accents this will strip them - but a fallback to the VGA font is not desirable here for such cases.
+		if (!font->CanPrint(GStrings("AM_MONSTERS")) || !font->CanPrint(GStrings("AM_SECRETS")) || !font->CanPrint(GStrings("AM_ITEMS"))) font2 = OriginalSmallFont;
+	}
 
 	if (am_showtime)
 	{
@@ -588,14 +636,14 @@ void DBaseStatusBar::DoDrawAutomapHUD(int crdefault, int highlight)
 		if (am_showmonsters)
 		{
 			textbuffer.Format("%s\34%c %d/%d", GStrings("AM_MONSTERS"), crdefault + 65, primaryLevel->killed_monsters, primaryLevel->total_monsters);
-			screen->DrawText(font, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
+			screen->DrawText(font2, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
 			y += fheight;
 		}
 
 		if (am_showsecrets)
 		{
 			textbuffer.Format("%s\34%c %d/%d", GStrings("AM_SECRETS"), crdefault + 65, primaryLevel->found_secrets, primaryLevel->total_secrets);
-			screen->DrawText(font, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
+			screen->DrawText(font2, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
 			y += fheight;
 		}
 
@@ -603,7 +651,7 @@ void DBaseStatusBar::DoDrawAutomapHUD(int crdefault, int highlight)
 		if (am_showitems)
 		{
 			textbuffer.Format("%s\34%c %d/%d", GStrings("AM_ITEMS"), crdefault + 65, primaryLevel->found_items, primaryLevel->total_items);
-			screen->DrawText(font, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
+			screen->DrawText(font2, highlight, textdist, y, textbuffer, DTA_KeepRatio, true, DTA_VirtualWidth, vwidth, DTA_VirtualHeight, vheight, TAG_DONE);
 			y += fheight;
 		}
 
