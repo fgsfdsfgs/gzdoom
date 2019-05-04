@@ -127,7 +127,6 @@ void popterm ()
 
 void call_terms ()
 {
-	Printf("CALL_TERMS\n");
 	while (NumTerms > 0)
 	{
 //		printf ("term %d - %s\n", NumTerms, TermNames[NumTerms-1]);
