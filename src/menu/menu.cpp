@@ -776,7 +776,12 @@ bool M_Responder (event_t *ev)
 		if (ev->type == EV_KeyDown)
 		{
 			// Pop-up menu?
+#ifdef __SWITCH__
+			// PLUS opens the menu
+			if (ev->data1 == KEY_ESCAPE || ev->data1 == KEY_FIRSTJOYBUTTON + 10)
+#else
 			if (ev->data1 == KEY_ESCAPE)
+#endif
 			{
 				M_StartControlPanel(true);
 				M_SetMenu(NAME_Mainmenu, -1);

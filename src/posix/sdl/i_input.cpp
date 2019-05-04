@@ -500,6 +500,28 @@ void MessagePump (const SDL_Event &sev)
 			if(event.data1 != 0)
 				D_PostEvent(&event);
 		}
+#ifdef __SWITCH__
+		else
+		{
+			event.type = EV_GUI_Event;
+			event.subtype = sev.type == SDL_JOYBUTTONDOWN ? EV_GUI_KeyDown : EV_GUI_KeyUp;
+			switch (sev.jbutton.button)
+			{
+			case 0:		event.data1 = GK_RETURN;	break;
+			case 6:		event.data1 = GK_PGUP;		break;
+			case 7:		event.data1 = GK_PGDN;		break;
+			case 12:	event.data1 = GK_LEFT;		break;
+			case 14:	event.data1 = GK_RIGHT;		break;
+			case 13:	event.data1 = GK_UP;		break;
+			case 15:	event.data1 = GK_DOWN;		break;
+			case 3:		event.data1 = GK_DEL;		break;
+			case 2:		event.data1 = SDLK_BACKSPACE;		break;
+			case 10:	event.data1 = GK_ESCAPE;	break;
+			default: break;
+			}
+			D_PostEvent (&event);
+		}
+#endif
 		break;
 	}
 }
