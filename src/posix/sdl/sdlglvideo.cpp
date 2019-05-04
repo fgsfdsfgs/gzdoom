@@ -470,24 +470,16 @@ SystemGLFrameBuffer::~SystemGLFrameBuffer ()
 
 int SystemGLFrameBuffer::GetClientWidth()
 {
-#ifdef __SWITCH__
-	return 1920;
-#else
-	int width = 0;
-	SDL_GL_GetDrawableSize(Priv::window, &width, nullptr);
+	int width = 0, height = 0;
+	SDL_GL_GetDrawableSize(Priv::window, &width, &height);
 	return width;
-#endif
 }
 
 int SystemGLFrameBuffer::GetClientHeight()
 {
-#ifdef __SWITCH__
-	return 1080;
-#else
-	int height = 0;
-	SDL_GL_GetDrawableSize(Priv::window, nullptr, &height);
+	int width = 0, height = 0;
+	SDL_GL_GetDrawableSize(Priv::window, &width, &height);
 	return height;
-#endif
 }
 
 void SystemGLFrameBuffer::SetVSync( bool vsync )
