@@ -75,18 +75,22 @@ int I_PickIWad_Cocoa (WadStuff *wads, int numwads, bool showwin, int defaultiwad
 #endif
 
 #ifdef __SWITCH__
-int nxlink_socket = -1;
-
-static int nxlink_sock = -1;
+static int nxlink_sock __attribute__((unused)) = -1;
+extern void call_terms(void);
 
 extern "C" void userAppInit(void) {
 	socketInitializeDefault();
+#ifdef _DEBUG
 	nxlink_sock = nxlinkStdio();
+#endif
 }
 
 extern "C" void userAppExit(void) {
-	if (nxlink_sock != -1)
+	call_terms();
+#ifdef _DEBUG
+	if (nxlink_sock >= 0)
 		close(nxlink_sock);
+#endif
 	socketExit();
 }
 #endif

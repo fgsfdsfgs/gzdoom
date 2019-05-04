@@ -127,7 +127,8 @@ void popterm ()
 
 void call_terms ()
 {
-    while (NumTerms > 0)
+	Printf("CALL_TERMS\n");
+	while (NumTerms > 0)
 	{
 //		printf ("term %d - %s\n", NumTerms, TermNames[NumTerms-1]);
 		TermFuncs[--NumTerms] ();
@@ -247,7 +248,9 @@ int main (int argc, char **argv)
 		  left in an unstable state.
 		*/
 
+#ifndef __SWITCH__ // called in userAppExit instead
 		atexit (call_terms);
+#endif
 		atterm (I_Quit);
 
 		// Should we even be doing anything with progdir on Unix systems?
@@ -304,8 +307,13 @@ int main (int argc, char **argv)
     }
     catch (...)
     {
+#ifdef __SWITCH__
+		fprintf(stderr, "Unhandled exception, exiting peacefully\n");
+		return -1;
+#else
 		call_terms ();
 		throw;
+#endif
     }
     return 0;
 }

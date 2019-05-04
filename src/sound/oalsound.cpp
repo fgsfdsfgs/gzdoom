@@ -1070,7 +1070,9 @@ OpenALSoundRenderer::~OpenALSoundRenderer()
 	alcMakeContextCurrent(NULL);
 	alcDestroyContext(Context);
 	Context = NULL;
+#ifndef __SWITCH__ // FIXME: oal-soft port crashes here
 	alcCloseDevice(Device);
+#endif
 	Device = NULL;
 }
 
