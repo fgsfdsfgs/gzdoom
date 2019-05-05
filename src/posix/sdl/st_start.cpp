@@ -37,7 +37,9 @@
 #include <unistd.h>
 #include <sys/time.h>
 #ifndef __SWITCH__
-#include <termios.h>
+# include <termios.h>
+#else
+# include <switch.h>
 #endif
 
 #include "st_start.h"
@@ -197,6 +199,8 @@ void FTTYStartupScreen::NetInit(const char *message, int numplayers)
 		rawtermios = OldTermIOS;
 		rawtermios.c_lflag &= ~(ICANON | ECHO);
 		tcsetattr (STDIN_FILENO, TCSANOW, &rawtermios);
+#else
+		fprintf (stderr, "Press 'B' to abort network game synchronization.");
 #endif
 		DidNetInit = true;
 	}
@@ -314,6 +318,7 @@ void FTTYStartupScreen::NetProgress(int count)
 
 bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 {
+#ifndef __SWITCH__
 	fd_set rfds;
 	struct timeval tv;
 	int retval;
@@ -342,7 +347,6 @@ bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 				return true;
 			}
 		}
-#ifndef __SWITCH__
 		else if (read (STDIN_FILENO, &k, 1) == 1)
 		{
 			// Check input on stdin
@@ -352,8 +356,27 @@ bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 				return false;
 			}
 		}
-#endif
 	}
+#else
+	for (;;)
+	{
+		// don't flood the network with packets
+		// we can't select on input, so just sleep
+		usleep(500000);
+		if (timer_callback (userdata))
+		{
+			fputc ('\n', stderr);
+			return true;
+		}
+		// check if the user wants to abort netgame
+		hidScanInput();
+		if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)
+		{
+			fprintf (stderr, "\nNetwork game synchronization aborted.");
+			return false;
+		}
+	}
+#endif //! __SWITCH__
 }
 
 void ST_Endoom()
