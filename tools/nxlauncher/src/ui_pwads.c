@@ -23,7 +23,6 @@ static struct Option pwads_opts[] =
     { OPT_FILE, "Demo" },
     { OPT_FILE, "Override response file" },
     { OPT_FILE, "Override INI file" },
-    { OPT_STRING, "Log file name" },
 };
 
 struct Menu ui_menu_pwads =
@@ -93,8 +92,6 @@ void UI_MenuFiles_Reload(void)
     pwads_opts[10].file.ext[0] = "ini";
     pwads_opts[10].file.ext[1] = NULL;
 
-    pwads_opts[11].codevar = fs_profiles[ui_profile].log;
-
     self->opts = pwads_opts;
-    self->numopts = 12;
+    self->numopts = 11;
 }

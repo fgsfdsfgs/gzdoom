@@ -32,6 +32,7 @@ static struct Option misc_opts[] =
     { OPT_STRING, "Starting map" },
     { OPT_INTEGER, "Time limit (min)", .inum = { 0, 120, 1, 0 } },
     { OPT_STRING, "Player class" },
+    { OPT_BOOLEAN, "Write log file" },
 };
 
 struct Menu ui_menu_misc =
@@ -71,7 +72,8 @@ void UI_MenuMisc_Reload(void)
     misc_opts[3].codevar = fs_profiles[ui_profile].warp;
     misc_opts[4].codevar = &fs_profiles[ui_profile].timer;
     misc_opts[5].codevar = fs_profiles[ui_profile].charclass;
+    misc_opts[6].codevar = &fs_profiles[ui_profile].log;
 
     self->opts = misc_opts;
-    self->numopts = 6;
+    self->numopts = 7;
 }

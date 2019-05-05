@@ -22,13 +22,13 @@ struct Profile
     char demo[MAX_FNAME];
     char rsp[MAX_FNAME];
     char ini[MAX_FNAME];
-    char log[MAX_FNAME];
 
     int netgame;
     int netmode;
     char joinaddr[MAX_FNAME];
     char gmode[32];
 
+    int log;
     int skill;
     int record;
     int timer;

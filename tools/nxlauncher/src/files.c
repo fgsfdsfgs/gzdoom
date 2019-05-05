@@ -219,8 +219,8 @@ static void WriteResponseFile(int game, const char *fname)
         fprintf(f, "-playdemo \"%s\"\n", g->demo);
     }
 
-    if (g->log[0])
-        fprintf(f, "+logfile \"%s/%s\"\n", RELATIVE_TMPDIR, g->log);
+    if (g->log)
+        fprintf(f, "+logfile gzdoom.log\n");
 
     if (g->ini[0])
         fprintf(f, "-config \"%s/%s\"\n", fs_cwd, g->ini);
