@@ -109,11 +109,6 @@ public:
 		}
 		if (offset < StartPos || offset > StartPos + Length) return -1;	// out of scope
 
-#ifdef __SWITCH__
-		// HACK: work around the fseek bug
-		fseek(File, 0, SEEK_SET);
-#endif
-
 		if (0 == fseek(File, offset, SEEK_SET))
 		{
 			FilePos = offset;

@@ -406,7 +406,10 @@ void FZipLump::SetLumpAddress()
 	// read and skip so that we can get to the actual file data.
 	FZipLocalFileHeader localHeader;
 	int skiplen;
-
+#ifdef __SWITCH__
+	// work around the fseek bug
+	Owner->Reader.Seek(0, FileReader::SeekSet);
+#endif
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Owner->Reader.Read(&localHeader, sizeof(localHeader));
 	skiplen = LittleShort(localHeader.NameLength) + LittleShort(localHeader.ExtraLength);
@@ -451,7 +454,10 @@ int FZipLump::FillCache()
 		RefCount = -1;
 		return -1;
 	}
-
+#ifdef __SWITCH__
+	// work around the fseek bug
+	Owner->Reader.Seek(0, FileReader::SeekSet);
+#endif
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Cache = new char[LumpSize];
 	UncompressZipLump(Cache, Owner->Reader, Method, LumpSize, CompressedSize, GPFlags);
