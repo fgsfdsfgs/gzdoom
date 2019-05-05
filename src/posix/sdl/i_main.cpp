@@ -299,6 +299,12 @@ int main (int argc, char **argv)
 #ifdef __linux__
 				Linux_I_FatalError(message);
 #endif // __linux__
+
+#ifdef __SWITCH__
+				fprintf(stderr, "Fatal exception: %s\n", message);
+				fflush(stderr);
+				exit(-1);
+#endif
 			}
 		}
 
@@ -308,7 +314,8 @@ int main (int argc, char **argv)
     {
 #ifdef __SWITCH__
 		fprintf(stderr, "Unhandled exception, exiting peacefully\n");
-		return -1;
+		fflush(stderr);
+		exit(-1);
 #else
 		call_terms ();
 		throw;
