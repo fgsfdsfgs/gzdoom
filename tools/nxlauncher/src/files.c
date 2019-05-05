@@ -157,7 +157,7 @@ static void WriteResponseFile(int game, const char *fname)
         }
     }
 
-    fprintf(f, "-iwad \"%s\"\n", g->iwad);
+    fprintf(f, "-iwad %s\n", g->iwad);
 
     int deh = 0;
     for (int i = 0; i < MAX_DEHS; ++i)
@@ -167,7 +167,7 @@ static void WriteResponseFile(int game, const char *fname)
         fprintf(f, "-deh");
         for (int i = 0; i < MAX_DEHS; ++i)
             if (g->dehs[i][0])
-                fprintf(f, " \"%s\"", g->dehs[i]);
+                fprintf(f, " %s", g->dehs[i]);
         fprintf(f, "\n");
     }
 
@@ -180,7 +180,7 @@ static void WriteResponseFile(int game, const char *fname)
 
         for (int i = 0; i < MAX_PWADS; ++i)
             if (g->pwads[i][0])
-                fprintf(f, " \"%s\"", g->pwads[i]);
+                fprintf(f, " %s", g->pwads[i]);
 
         fprintf(f, "\n");
     }
@@ -195,7 +195,7 @@ static void WriteResponseFile(int game, const char *fname)
         fprintf(f, "+map %s\n", g->warp);
 
     if (g->charclass[0])
-        fprintf(f, "+playerclass \"%s\"\n", g->charclass);
+        fprintf(f, "+playerclass %s\n", g->charclass);
 
     if (g->monsters[0] == '1')
         fprintf(f, "-nomonsters\n");
@@ -212,18 +212,18 @@ static void WriteResponseFile(int game, const char *fname)
     }
     else if (g->demo[0])
     {
-        fprintf(f, "-file \"%s\"\n", g->demo);
+        fprintf(f, "-file %s\n", g->demo);
         char *dot = strrchr(g->demo, '.');
         if (dot && *(dot+1) != '.' && *(dot+1) != '/')
             *dot = '\0'; // playdemo doesn't want extensions
-        fprintf(f, "-playdemo \"%s\"\n", g->demo);
+        fprintf(f, "-playdemo %s\n", g->demo);
     }
 
     if (g->log)
         fprintf(f, "+logfile gzdoom.log\n");
 
     if (g->ini[0])
-        fprintf(f, "-config \"%s/%s\"\n", fs_cwd, g->ini);
+        fprintf(f, "-config %s/%s\n", fs_cwd, g->ini);
 
     fclose(f);
 }
