@@ -79,6 +79,10 @@ void Mac_I_FatalError(const char* errortext);
 void Linux_I_FatalError(const char* errortext);
 #endif
 
+#ifdef __SWITCH__
+void Switch_I_FatalError(const char* errortext);
+#endif
+
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
@@ -301,9 +305,7 @@ int main (int argc, char **argv)
 #endif // __linux__
 
 #ifdef __SWITCH__
-				fprintf(stderr, "Fatal exception: %s\n", message);
-				fflush(stderr);
-				exit(-1);
+				Switch_I_FatalError(message);
 #endif
 			}
 		}

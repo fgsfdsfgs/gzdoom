@@ -186,6 +186,17 @@ void Linux_I_FatalError(const char* errortext)
 }
 #endif
 
+#if defined(__SWITCH__)
+void Switch_I_FatalError(const char* errortext)
+{
+	SDL_Quit();
+	FILE *f = fopen("error.log", "w");
+	if (!f) return;
+	fprintf(f, "FATAL ERROR:\n%s\n", errortext);
+	fclose(f);
+}
+#endif
+
 void I_FatalError (const char *error, va_list ap)
 {
 	static bool alreadyThrown = false;
@@ -205,7 +216,11 @@ void I_FatalError (const char *error, va_list ap)
 #if defined(__linux__) && !defined(__SWITCH__)
 		Linux_I_FatalError(errortext);
 #endif
-		
+
+#if defined(__SWITCH__)
+		Switch_I_FatalError(errortext);
+#endif
+
 		// Record error to log (if logging)
 		if (Logfile)
 		{
@@ -214,7 +229,6 @@ void I_FatalError (const char *error, va_list ap)
 		}
 //		throw CFatalError (errortext);
 		fprintf (stderr, "%s\n", errortext);
-		fflush (stderr);
 		exit (-1);
 	}
 
