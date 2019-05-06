@@ -534,6 +534,7 @@ set( PLAT_UNIX_SOURCES
 	posix/unix/gtk_dialogs.cpp )
 set( PLAT_NX_SOURCES
 	posix/nx/i_hackstubs.cpp
+	posix/nx/i_swkbd.cpp
 	posix/nx/i_specialpaths.cpp )
 set( PLAT_OSX_SOURCES
 	posix/osx/iwadpicker_cocoa.mm

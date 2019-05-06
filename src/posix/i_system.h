@@ -161,6 +161,8 @@ static inline char *strlwr(char *str)
 }
 #endif
 
+bool I_OnScreenKeyboard(const char *hint, char *out, int outlen);
+
 inline int I_GetNumaNodeCount() { return 1; }
 inline int I_GetNumaNodeThreadCount(int numaNode) { return std::max<int>(std::thread::hardware_concurrency(), 1); }
 inline void I_SetThreadNumaNode(std::thread &thread, int numaNode) { }

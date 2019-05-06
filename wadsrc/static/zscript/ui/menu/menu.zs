@@ -100,6 +100,9 @@ class Menu : Object native ui version("2.4")
 	native void ActivateMenu();
 	native static void UpdateColorsets(PlayerClass cls);
 	native static void UpdateSkinOptions(PlayerClass cls);
+	// TODO: figure out a better place for this
+	native static bool TouchKeyboardAvailable();
+	native static String TouchKeyboardInput(String hint, String init, int maxlen);
 	
 	//=============================================================================
 	//
