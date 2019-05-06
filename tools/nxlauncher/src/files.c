@@ -192,6 +192,8 @@ static int kvhandler(void *user, const char *section, const char *key, const cha
       strncpy(p->rsp, val, sizeof(p->rsp)-1);
     } else if (!strncasecmp(key, "overrideini", 11)) {
       strncpy(p->ini, val, sizeof(p->ini)-1);
+    } else if (!strncasecmp(key, "loadgame", 8)) {
+      strncpy(p->load, val, sizeof(p->load)-1);
     } else if (!strncasecmp(key, "netmode", 7)) {
       p->netmode = atoi(val);
     } else if (!strncasecmp(key, "joinaddr", 8)) {
@@ -250,6 +252,7 @@ static inline void SaveProfile(FILE *f, struct Profile *p)
     if (p->demo[0]) fprintf(f, "Demo = %s\n", p->demo);
     if (p->rsp[0]) fprintf(f, "OverrideRSP = %s\n", p->rsp);
     if (p->ini[0]) fprintf(f, "OverrideINI = %s\n", p->ini);
+    if (p->load[0]) fprintf(f, "LoadGame = %s\n", p->load);
 
     if (p->netmode) fprintf(f, "NetMode = %d\n", p->netmode);
     if (p->joinaddr[0]) fprintf(f, "JoinAddr = %s\n", p->joinaddr);
@@ -432,7 +435,10 @@ static void WriteArgv(int game, char *argv, int size)
         argprintf("+logfile gzdoom.log ");
 
     if (g->ini[0])
-        argprintf("-config \"%s/%s\" ", fs_cwd, g->ini);
+        argprintf("-config \"%s\" ", g->ini);
+
+    if (g->load[0])
+        argprintf("-loadgame \"save/%s\" ", g->load);
 }
 
 void FS_ExecGame(int game)

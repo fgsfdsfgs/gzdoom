@@ -25,6 +25,7 @@ struct Profile
     char demo[MAX_FNAME];
     char rsp[MAX_FNAME];
     char ini[MAX_FNAME];
+    char load[MAX_FNAME];
 
     int numpwads;
     int numdehs;

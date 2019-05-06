@@ -23,6 +23,7 @@ static struct Option pwads_opts[] =
     { OPT_FILE, "DEH file 1" },
     { OPT_FILE, "DEH file 2" },
     { OPT_FILE, "Demo" },
+    { OPT_FILE, "Load saved game" },
     { OPT_FILE, "Override response file" },
     { OPT_FILE, "Override INI file" },
 };
@@ -84,16 +85,21 @@ void UI_MenuFiles_Reload(void)
     pwads_opts[10].file.ext[0] = "lmp";
     pwads_opts[10].file.ext[1] = NULL;
 
-    pwads_opts[11].codevar = fs_profiles[ui_profile].rsp;
-    pwads_opts[11].file.dir = BASEDIR "/pwads";
-    pwads_opts[11].file.ext[0] = "rsp";
+    pwads_opts[11].codevar = fs_profiles[ui_profile].load;
+    pwads_opts[11].file.dir = BASEDIR "/save";
+    pwads_opts[11].file.ext[0] = "zds";
     pwads_opts[11].file.ext[1] = NULL;
 
-    pwads_opts[12].codevar = fs_profiles[ui_profile].ini;
-    pwads_opts[12].file.dir = BASEDIR;
-    pwads_opts[12].file.ext[0] = "ini";
+    pwads_opts[12].codevar = fs_profiles[ui_profile].rsp;
+    pwads_opts[12].file.dir = BASEDIR "/pwads";
+    pwads_opts[12].file.ext[0] = "rsp";
     pwads_opts[12].file.ext[1] = NULL;
 
+    pwads_opts[13].codevar = fs_profiles[ui_profile].ini;
+    pwads_opts[13].file.dir = BASEDIR;
+    pwads_opts[13].file.ext[0] = "ini";
+    pwads_opts[13].file.ext[1] = NULL;
+
     self->opts = pwads_opts;
-    self->numopts = 13;
+    self->numopts = 14;
 }
