@@ -1,7 +1,7 @@
 #pragma once
 
 #define MAX_FNAME 512
-#define MAX_PWADS 4
+#define MAX_PWADS 8
 #define MAX_DEHS  2
 #define MAX_PROFILES 32
 #define MAX_ARGV 4096
