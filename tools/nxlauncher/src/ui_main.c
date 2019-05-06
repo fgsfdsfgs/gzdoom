@@ -21,7 +21,7 @@ struct Menu ui_menu_main =
     UI_MenuMain_Draw,
 };
 
-static struct Menu *self = &ui_menu_main;
+// static struct Menu *self = &ui_menu_main;
 
 void UI_MenuMain_Init(void)
 {

@@ -12,8 +12,6 @@ void UI_MenuNet_Draw(void);
 void UI_MenuNet_Reload(void);
 
 static void DoJoinNet(int);
-static void DoJoinLocal(int);
-static void DoJoinAuto(int);
 static void DoHost(int);
 
 static const char *mode_labels[] = 

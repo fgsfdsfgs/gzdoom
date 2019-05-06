@@ -363,7 +363,6 @@ static void OptLoadVar(struct Option *opt)
 {
     int itmp;
     double dtmp;
-    char *stmp;
     char buf[100];
 
     int vtype = CFG_VarType(ui_profile, opt->cfgvar);
@@ -455,7 +454,6 @@ static void OptWriteVar(struct Option *opt)
     int itmp;
     double dtmp;
     char *stmp;
-    char buf[100];
 
     switch (opt->type)
     {

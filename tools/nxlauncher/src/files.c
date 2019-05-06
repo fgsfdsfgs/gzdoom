@@ -13,7 +13,7 @@
 #include <dirent.h>
 
 static char fs_error[4096];
-static char fs_cwd[1024];
+static char fs_cwd[MAX_FNAME];
 
 // a bunch of profiles for potentially available IWADs
 // the ones you don't have won't be shown in the menu
@@ -440,9 +440,9 @@ void FS_ExecGame(int game)
     if (game < 0 || game >= MAX_PROFILES) return;
 
     struct Profile *g = fs_profiles + game;
-    static char exe[MAX_FNAME + 1];
+    static char exe[MAX_FNAME + 32];
     static char argsbuf[MAX_ARGV + 1];
-    static char argv[MAX_ARGV + MAX_FNAME + 1];
+    static char argv[MAX_ARGV + MAX_FNAME + 64];
 
     // save any changes to profiles
     FS_SaveProfiles();
