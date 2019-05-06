@@ -13,6 +13,7 @@ int IN_Init(void)
 
 void IN_Update(void)
 {
+    appletMainLoop();
     pad_old = pad;
     hidScanInput();
     pad = hidKeysHeld(CONTROLLER_P1_AUTO);

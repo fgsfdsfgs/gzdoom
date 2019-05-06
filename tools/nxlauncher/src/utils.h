@@ -16,3 +16,5 @@ char *strparse(char *data, char *token);
 
 void I_Cleanup(void);
 void I_Error(const char *error, ...);
+void I_FatalError(const char *error, ...);
+int I_Question(const char *text, ...);

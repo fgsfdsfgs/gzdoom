@@ -4,6 +4,9 @@
 #include "net.h"
 #include "screen.h"
 
+#define INI_STOP_ON_FIRST_ERROR 1
+#include "ini.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -68,10 +71,13 @@ int FS_Init(void)
 
     if (fs_maxprofile < 0)
     {
-        SetError("No supported games were found in the GZDoom directory.\n" \
-                 "Make sure you have installed at least one game properly.");
+        SetError("No supported IWADs were found in the IWADs directory.\n" \
+                 "Make sure you have at least one supported IWAD.");
         return -1;
     }
+
+    // load profiles from disk
+    FS_LoadProfiles();
 
     getcwd(fs_cwd, sizeof(fs_cwd)-1);
 
@@ -80,8 +86,7 @@ int FS_Init(void)
 
 void FS_Free(void)
 {
-
-} 
+}
 
 char *FS_Error(void)
 {
@@ -134,12 +139,197 @@ void FS_FreeFileList(struct FileList *flist)
     flist->numfiles = 0;
 }
 
+static int kvhandler(void *user, const char *section, const char *key, const char *val) {
+    // FIXME: this is really fucking slow but whatever
+
+    struct Profile *p = NULL;
+    for (int i = 0; i < MAX_PROFILES; ++i)
+    {
+        if (!strncmp(section, fs_profiles[i].name, sizeof(fs_profiles[i].name)-1))
+        {
+          p = fs_profiles + i;
+          p->loaded = 1; // will be saved back to the file later
+          break;
+        }
+    }
+
+    if (!p)
+    {
+        // don't overwrite builtins
+        if (fs_maxprofile < BUILTIN_PROFILES)
+            fs_maxprofile = BUILTIN_PROFILES;
+        if (++fs_maxprofile >= MAX_PROFILES)
+        {
+            fs_maxprofile = MAX_PROFILES-1;
+            SetError("Too many profiles (max %d)", MAX_PROFILES);
+            return 0;
+        }
+        p = fs_profiles + fs_maxprofile;
+        p->present = 1; // custom profiles are always present
+        p->loaded = 1; // will be saved back to the file later
+        strncpy(p->name, section, sizeof(p->name)-1);
+    }
+
+    if (!p->present) return 1; // no point parsing profiles that can't be played
+
+    /*  */ if (!strncasecmp(key, "iwad", 4)) {
+        strncpy(p->iwad, val, sizeof(p->iwad)-1);
+    } else if (!strncasecmp(key, "file", 4)) {
+        if (p->numpwads >= MAX_PWADS) {
+            SetError("Too many custom files (max %d)", MAX_PWADS);
+            return 0;
+        }
+        strncpy(p->pwads[p->numpwads++], val, sizeof(p->pwads[0])-1);
+    } else if (!strncasecmp(key, "dehfile", 7)) {
+        if (p->numdehs >= MAX_DEHS) {
+            SetError("Too many DEH files (max %d)", MAX_DEHS);
+            return 0;
+        }
+        strncpy(p->dehs[p->numdehs++], val, sizeof(p->dehs[0])-1);
+    } else if (!strncasecmp(key, "demo", 4)) {
+      strncpy(p->demo, val, sizeof(p->demo)-1);
+    } else if (!strncasecmp(key, "overridersp", 11)) {
+      strncpy(p->rsp, val, sizeof(p->rsp)-1);
+    } else if (!strncasecmp(key, "overrideini", 11)) {
+      strncpy(p->ini, val, sizeof(p->ini)-1);
+    } else if (!strncasecmp(key, "netmode", 7)) {
+      p->netmode = atoi(val);
+    } else if (!strncasecmp(key, "joinaddr", 8)) {
+      strncpy(p->joinaddr, val, sizeof(p->joinaddr)-1);
+    } else if (!strncasecmp(key, "gamemode", 8)) {
+      strncpy(p->gmode, val, sizeof(p->gmode)-1);
+    } else if (!strncasecmp(key, "writelog", 8)) {
+      p->log = atoi(val);
+    } else if (!strncasecmp(key, "skill", 5)) {
+      p->skill = atoi(val);
+    } else if (!strncasecmp(key, "recorddemo", 10)) {
+      p->record = atoi(val);
+    } else if (!strncasecmp(key, "timer", 5)) {
+      p->timer = atoi(val);
+    } else if (!strncasecmp(key, "maxplayers", 10)) {
+      p->maxplayers = atoi(val);
+    } else if (!strncasecmp(key, "monsters", 8)) {
+      p->monsters[0] = val[0];
+    } else if (!strncasecmp(key, "startmap", 8)) {
+      strncpy(p->warp, val, sizeof(p->warp)-1);
+    } else if (!strncasecmp(key, "playerclass", 11)) {
+      strncpy(p->charclass, val, sizeof(p->charclass)-1);
+    }
+
+    return 1;
+}
+
+int FS_LoadProfiles(void)
+{
+    FILE *f = fopen(BASEDIR "/launcher.ini", "r");
+    if (!f) return -666;
+
+    int ret = ini_parse_file(f, kvhandler, NULL);
+    fclose(f);
+
+    if (ret <= 0)
+      return ret; // a file/memory error or success
+
+    // parsing error on line ret
+    I_Error("Error parsing launcher.ini (line %d):\n%s", ret, FS_Error());
+    return -667;
+}
+
+static inline void SaveProfile(FILE *f, struct Profile *p)
+{
+    fprintf(f, "[%s]\n", p->name);
+    fprintf(f, "IWAD = %s\n", p->iwad);
+
+    for (int i = 0; i < MAX_PWADS; ++i)
+        if (p->pwads[i][0])
+            fprintf(f, "File = %s\n", p->pwads[i]);
+    for (int i = 0; i < MAX_DEHS; ++i)
+        if (p->dehs[i][0])
+            fprintf(f, "DEHFile = %s\n", p->dehs[i]);
+
+    if (p->demo[0]) fprintf(f, "Demo = %s\n", p->demo);
+    if (p->rsp[0]) fprintf(f, "OverrideRSP = %s\n", p->rsp);
+    if (p->ini[0]) fprintf(f, "OverrideINI = %s\n", p->ini);
+
+    if (p->netmode) fprintf(f, "NetMode = %d\n", p->netmode);
+    if (p->joinaddr[0]) fprintf(f, "JoinAddr = %s\n", p->joinaddr);
+    if (p->gmode[0]) fprintf(f, "GameMode = %s\n", p->gmode);
+    if (p->maxplayers) fprintf(f, "MaxPlayers = %d\n", p->maxplayers);
+
+    if (p->log) fprintf(f, "WriteLog = %d\n", p->log);
+    if (p->skill) fprintf(f, "Skill = %d\n", p->skill);
+    if (p->record) fprintf(f, "RecordDemo = %d\n", p->record);
+    if (p->timer) fprintf(f, "Timer = %d\n", p->timer);
+
+    if (p->monsters[0]) fprintf(f, "Monsters = %s\n", p->monsters);
+    if (p->warp[0]) fprintf(f, "StartMap = %s\n", p->warp);
+    if (p->charclass[0]) fprintf(f, "PlayerClass = %s\n", p->charclass);
+
+    fprintf(f, "\n");
+}
+
+int FS_SaveProfiles(void)
+{
+    FILE *f = fopen(BASEDIR "/launcher.ini", "w");
+    if (!f) return -1;
+
+    for (struct Profile *p = fs_profiles; p <= fs_profiles + fs_maxprofile; ++p)
+    {
+        // no point in saving nonexistent profiles
+        if (!p->present && !p->loaded) continue;
+        SaveProfile(f, p);
+    }
+
+    fclose(f);
+    return 0;
+}
+
+int FS_DeleteProfile(int game)
+{
+    if (game < BUILTIN_PROFILES || game >= MAX_PROFILES)
+        return -1;
+
+    if (!fs_profiles[game].present)
+        return -2;
+
+    fs_profiles[game].present = 0;
+    fs_profiles[game].loaded = 0;
+
+    if (game == fs_maxprofile)
+        for (int i = game; i >= 0; --i)
+            if (fs_profiles[i].present)
+                fs_maxprofile = i;
+
+    return 0;
+}
+
+int FS_AddProfile(char *name, char *iwad)
+{
+    if (!name || !iwad || !name[0] || !iwad[0])
+        return -1;
+
+    if (fs_maxprofile >= MAX_PROFILES-1)
+        return -2;
+
+    // don't overwrite builtins
+    if (fs_maxprofile < BUILTIN_PROFILES)
+        fs_maxprofile = BUILTIN_PROFILES;
+
+    ++fs_maxprofile;
+    fs_profiles[fs_maxprofile].present = 1;
+    fs_profiles[fs_maxprofile].loaded = 1;
+    strncpy(fs_profiles[fs_maxprofile].name, name, sizeof(fs_profiles[fs_maxprofile].name)-1);
+    strncpy(fs_profiles[fs_maxprofile].iwad, iwad, sizeof(fs_profiles[fs_maxprofile].iwad)-1);
+
+    return 0;
+}
+
 static void WriteResponseFile(int game, const char *fname)
 {
     struct Profile *g = fs_profiles + game;
 
     FILE *f = fopen(fname, "w");
-    if (!f) I_Error("Could not create file\n" TMPDIR "/chocolat.rsp");
+    if (!f) I_FatalError("Could not create file\n" TMPDIR "/chocolat.rsp");
 
     if (g->netgame)
     {
@@ -236,6 +426,9 @@ void FS_ExecGame(int game)
     static char exe[1024];
     static char rsp[1024];
     static char argv[2048];
+
+    // save any changes to profiles
+    FS_SaveProfiles();
 
     if (g->rsp[0])
     {

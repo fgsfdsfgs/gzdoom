@@ -36,7 +36,7 @@ void I_Cleanup(void)
     CFG_FreeAll();
 }
 
-void I_Error(const char *error, ...)
+void I_FatalError(const char *error, ...)
 {
     static char buf[4096];
 
@@ -68,19 +68,56 @@ void I_Error(const char *error, ...)
     exit(0);
 }
 
+void I_Error(const char *error, ...)
+{
+    static char buf[4096];
+
+    va_list argptr;
+    va_start(argptr, error);
+    vsnprintf(buf, sizeof(buf), error, argptr);
+    va_end(argptr);
+
+    R_BeginDrawing();
+    R_Clear(C_BLACK);
+    R_PrintScaled(P_XCENTER, SCR_CX, SCR_CY-64, 2.f, C_ORANGE, "ERROR");
+    R_Print(P_XCENTER, SCR_CX, SCR_CY, C_WHITE, buf);
+    R_Print(P_XCENTER | P_ABOTTOM, SCR_CX, SCR_H-32, C_LTGREY, "Press A to continue");
+    R_EndDrawing();
+    IN_WaitForButton(B_A);
+}
+
+int I_Question(const char *text, ...)
+{
+    static char buf[4096];
+
+    va_list argptr;
+    va_start(argptr, text);
+    vsnprintf(buf, sizeof(buf), text, argptr);
+    va_end(argptr);
+
+    R_BeginDrawing();
+    R_Clear(C_BLACK);
+    R_PrintScaled(P_XCENTER, SCR_CX, SCR_CY-64, 2.f, C_YELLOW, "WARNING");
+    R_Print(P_XCENTER, SCR_CX, SCR_CY, C_WHITE, buf);
+    R_Print(P_XCENTER | P_ABOTTOM, SCR_CX, SCR_H-32, C_LTGREY, "Press A to confirm");
+    R_EndDrawing();
+ 
+    return (IN_GetFirstButton() == B_A);
+}
+
 int main(void)
 {
-    if (R_Init()) I_Error("R_Init(): failed");
+    if (R_Init()) I_FatalError("R_Init(): failed");
     init_level++;
-    if (NET_Init()) I_Error("NET_Init(): failed");
+    if (NET_Init()) I_FatalError("NET_Init(): failed");
     init_level++;
-    if (FS_Init()) I_Error("FS_Init(): %s", FS_Error());
+    if (FS_Init()) I_FatalError("FS_Init(): %s", FS_Error());
     init_level++;
-    if (IN_Init()) I_Error("IN_Init(): failed");
+    if (IN_Init()) I_FatalError("IN_Init(): failed");
     init_level++;
-    if (CFG_LoadAll() > 6) I_Error("CFG_LoadAll(): failed");
+    if (CFG_LoadAll() > 6) I_FatalError("CFG_LoadAll(): failed");
     init_level++;
-    if (UI_Init()) I_Error("UI_Init(): failed");
+    if (UI_Init()) I_FatalError("UI_Init(): failed");
     init_level++;
 
     int finish = 0;
@@ -92,6 +129,8 @@ int main(void)
     }
     while (!finish);
 
+    // save any changes to profiles
+    FS_SaveProfiles();
     I_Cleanup();
     return 0;
 }

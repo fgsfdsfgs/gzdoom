@@ -4,6 +4,7 @@
 #define MAX_PWADS 4
 #define MAX_DEHS  2
 #define MAX_PROFILES 32
+#define BUILTIN_PROFILES 14
 
 struct FileList
 {
@@ -16,12 +17,16 @@ struct Profile
     char name[MAX_FNAME];
     char iwad[MAX_FNAME];
     int present;
+    int loaded;
 
     char pwads[MAX_PWADS][MAX_FNAME];
     char dehs[MAX_DEHS][MAX_FNAME];
     char demo[MAX_FNAME];
     char rsp[MAX_FNAME];
     char ini[MAX_FNAME];
+
+    int numpwads;
+    int numdehs;
 
     int netgame;
     int netmode;
@@ -49,5 +54,10 @@ int FS_HaveGame(int game);
 
 int FS_ListDir(struct FileList *flist, const char *path, const char *ext);
 void FS_FreeFileList(struct FileList *flist);
+
+int FS_LoadProfiles(void);
+int FS_SaveProfiles(void);
+int FS_DeleteProfile(int game);
+int FS_AddProfile(char *name, char *iwad);
 
 void FS_ExecGame(int game);

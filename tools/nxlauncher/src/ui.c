@@ -53,7 +53,7 @@ static int ui_keyboard = 0;
 
 // OSK stuff
 
-static void TouchKeyboardOpen(const char *hint, char *out, int outlen)
+void UI_TouchKeyboardOpen(const char *hint, char *out, int outlen)
 {
     if (!out || !outlen) return;
 
@@ -172,6 +172,24 @@ static void FileDialogDraw(void)
         R_Print(0, 160, y, C_LTGREY, "...");
 }
 
+int UI_BlockingFileDialog(const char *title, const char *dir, const char **exts, char *output)
+{
+    if (FileDialogStart(title, dir, exts, output))
+        return -1;
+
+    while (ui_file_select)
+    {
+        IN_Update();
+        FileDialogUpdate();
+        R_BeginDrawing();
+        R_Clear(C_BLACK);
+        FileDialogDraw();
+        R_EndDrawing();
+    }
+
+    return 0;
+}
+
 // options stuff
 
 static void OptScroll(struct Option *opt, int dir)
@@ -217,7 +235,7 @@ static void OptActivate(struct Option *opt)
     }
     else if (opt->type == OPT_STRING)
     {
-        TouchKeyboardOpen(opt->name, opt->string, MAX_STROPT);
+        UI_TouchKeyboardOpen(opt->name, opt->string, MAX_STROPT);
     }
     else if (opt->type == OPT_FILE)
     {

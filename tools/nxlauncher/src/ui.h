@@ -103,3 +103,6 @@ void UI_Free(void);
 
 void UI_ReloadOptions(void);
 void UI_SaveOptions(void);
+
+void UI_TouchKeyboardOpen(const char *hint, char *out, int outlen);
+int UI_BlockingFileDialog(const char *title, const char *dir, const char **exts, char *output);
