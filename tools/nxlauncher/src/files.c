@@ -324,41 +324,60 @@ int FS_AddProfile(char *name, char *iwad)
     return 0;
 }
 
-static void WriteResponseFile(int game, const char *fname)
+static char *argptr = NULL;
+static int argsize = 0;
+static void argprintf(const char *fmt, ...)
+{
+    static char argbuf[4096];
+
+    va_list vaptr;
+    va_start(vaptr, fmt);
+    int ret = vsnprintf(argbuf, sizeof(argbuf)-1, fmt, vaptr);
+    va_end(vaptr);
+
+    if (ret < 0 || argptr + ret >= argptr + argsize)
+        return;
+
+    strncat(argptr, argbuf, argsize);
+
+    argptr += ret;
+}
+
+static void WriteArgv(int game, char *argv, int size)
 {
     struct Profile *g = fs_profiles + game;
 
-    FILE *f = fopen(fname, "w");
-    if (!f) I_FatalError("Could not create file\n" TMPDIR "/chocolat.rsp");
+    argptr = argv;
+    argsize = size;
 
     if (g->netgame)
     {
         if (g->netmode)
-            fprintf(f, "-netmode %d\n", g->netmode);
+            argprintf("-netmode %d ", g->netmode);
         if (g->netgame == 1)
         {
-            fprintf(f, "-join %s\n", g->joinaddr);
+            argprintf("-join %s ", g->joinaddr);
         }
         else if (g->netgame == 2)
         {
-            fprintf(f, "-host %d\n", g->maxplayers);
+            argprintf("-host %d ", g->maxplayers);
             if (g->gmode[0])
-                fprintf(f, "-%s\n", g->gmode);
+                argprintf("-%s ", g->gmode);
         }
     }
 
-    fprintf(f, "-iwad %s\n", g->iwad);
+    argprintf("-iwad \"%s\" ", g->iwad);
 
     int deh = 0;
     for (int i = 0; i < MAX_DEHS; ++i)
         if (g->dehs[i][0]) { deh = 1; break; }
     if (deh)
     {
-        fprintf(f, "-deh");
+        argprintf("-deh");
         for (int i = 0; i < MAX_DEHS; ++i)
             if (g->dehs[i][0])
-                fprintf(f, " %s", g->dehs[i]);
-        fprintf(f, "\n");
+                argprintf(" \"%s\"", g->dehs[i]);
+        argprintf(" ");
     }
 
     int file = 0;
@@ -366,56 +385,54 @@ static void WriteResponseFile(int game, const char *fname)
         if (g->pwads[i][0]) { file = 1; break; }
     if (file)
     {
-        fprintf(f, "-file");
+        argprintf("-file");
 
         for (int i = 0; i < MAX_PWADS; ++i)
             if (g->pwads[i][0])
-                fprintf(f, " %s", g->pwads[i]);
+                argprintf(" \"%s\"", g->pwads[i]);
 
-        fprintf(f, "\n");
+        argprintf(" ");
     }
 
     if (g->skill)
-        fprintf(f, "-skill %d\n", g->skill);
+        argprintf("-skill %d ", g->skill);
 
     if (g->timer)
-        fprintf(f, "-timer %d\n", g->timer);
+        argprintf("-timer %d ", g->timer);
 
     if (g->warp[0])
-        fprintf(f, "+map %s\n", g->warp);
+        argprintf("+map %s ", g->warp);
 
     if (g->charclass[0])
-        fprintf(f, "+playerclass %s\n", g->charclass);
+        argprintf("+playerclass %s ", g->charclass);
 
     if (g->monsters[0] == '1')
-        fprintf(f, "-nomonsters\n");
+        argprintf("-nomonsters ");
     else if (g->monsters[0] == '2')
-        fprintf(f, "-fast\n");
+        argprintf("-fast ");
     else if (g->monsters[0] == '4')
-        fprintf(f, "-respawn\n");
+        argprintf("-respawn ");
     else if (g->monsters[0] == '6')
-        fprintf(f, "-fast\n-respawn\n");
+        argprintf("-fast -respawn ");
 
     if (g->record)
     {
-        fprintf(f, "-record %s/mydemo\n", RELATIVE_TMPDIR);
+        argprintf("-record \"%s/mydemo\" ", RELATIVE_TMPDIR);
     }
     else if (g->demo[0])
     {
-        fprintf(f, "-file %s\n", g->demo);
+        argprintf("-file \"%s\" ", g->demo);
         char *dot = strrchr(g->demo, '.');
         if (dot && *(dot+1) != '.' && *(dot+1) != '/')
             *dot = '\0'; // playdemo doesn't want extensions
-        fprintf(f, "-playdemo %s\n", g->demo);
+        argprintf("-playdemo \"%s\" ", g->demo);
     }
 
     if (g->log)
-        fprintf(f, "+logfile gzdoom.log\n");
+        argprintf("+logfile gzdoom.log ");
 
     if (g->ini[0])
-        fprintf(f, "-config %s/%s\n", fs_cwd, g->ini);
-
-    fclose(f);
+        argprintf("-config \"%s/%s\" ", fs_cwd, g->ini);
 }
 
 void FS_ExecGame(int game)
@@ -423,30 +440,23 @@ void FS_ExecGame(int game)
     if (game < 0 || game >= MAX_PROFILES) return;
 
     struct Profile *g = fs_profiles + game;
-    static char exe[1024];
-    static char rsp[1024];
-    static char argv[2048];
+    static char exe[MAX_FNAME + 1];
+    static char argsbuf[MAX_ARGV + 1];
+    static char argv[MAX_ARGV + MAX_FNAME + 1];
 
     // save any changes to profiles
     FS_SaveProfiles();
 
+    // pass rsp instead of args if specified, otherwise generate argv
     if (g->rsp[0])
-    {
-        snprintf(rsp, sizeof(rsp), "@%s/%s", fs_cwd, g->rsp);
-    }
+        snprintf(argsbuf, sizeof(argsbuf), "@%s/%s", fs_cwd, g->rsp);
     else
-    {
-        WriteResponseFile(game, TMPDIR "/args.rsp");
-        snprintf(rsp, sizeof(rsp)-1, "@" RELATIVE_TMPDIR "/args.rsp");
-    }
+        WriteArgv(game, argsbuf, sizeof(argsbuf));
 
     // absolute path required
     snprintf(exe, sizeof(exe), "%s/%s/gzdoom.nro", fs_cwd, BASEDIR);
-    snprintf(argv, sizeof(argv), "%s %s", exe, rsp);
-
-    R_BeginDrawing();
-    R_Clear(C_BLACK);
-    R_EndDrawing();
+    // argv[0] = nro, argv[rest] = args
+    snprintf(argv, sizeof(argv), "%s %s", exe, argsbuf);
 
     I_Cleanup();
     envSetNextLoad(exe, argv);

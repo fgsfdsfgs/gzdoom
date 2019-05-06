@@ -92,6 +92,12 @@ void UI_MenuNet_Reload(void)
 
 static void NetStart(int server)
 {
+    if (!I_Question("The game will appear frozen until connection\n"
+                    "is established and all players have joined.\n"
+                    "You can press B to shut the game down at any\n"
+                    "time before that happens.\n\n"
+                    "Are you sure you want to continue?"))
+        return;
     fs_profiles[ui_profile].netgame = server + 1;
     UI_SaveOptions();
     CFG_SaveAll();
