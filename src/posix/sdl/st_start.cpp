@@ -370,7 +370,7 @@ bool FTTYStartupScreen::NetLoop(bool (*timer_callback)(void *), void *userdata)
 		}
 		// check if the user wants to abort netgame
 		hidScanInput();
-		if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)
+		if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_B)
 		{
 			fprintf (stderr, "\nNetwork game synchronization aborted.");
 			return false;
