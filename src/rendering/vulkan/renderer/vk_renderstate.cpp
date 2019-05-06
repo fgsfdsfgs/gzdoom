@@ -210,6 +210,7 @@ void VkRenderState::ApplyRenderPass(int dt)
 	passKey.StencilPassOp = mStencilOp;
 	passKey.ColorMask = mColorMask;
 	passKey.CullMode = mCullMode;
+	passKey.DrawBufferFormat = mRenderTarget.Format;
 	passKey.Samples = mRenderTarget.Samples;
 	passKey.DrawBuffers = mRenderTarget.DrawBuffers;
 	passKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->GetLayers() : 0;
@@ -535,13 +536,15 @@ void VkRenderState::EnableDrawBuffers(int count)
 	}
 }
 
-void VkRenderState::SetRenderTarget(VulkanImageView *view, int width, int height, VkSampleCountFlagBits samples)
+void VkRenderState::SetRenderTarget(VulkanImageView *view, VulkanImageView *depthStencilView, int width, int height, VkFormat format, VkSampleCountFlagBits samples)
 {
 	EndRenderPass();
 
 	mRenderTarget.View = view;
+	mRenderTarget.DepthStencil = depthStencilView;
 	mRenderTarget.Width = width;
 	mRenderTarget.Height = height;
+	mRenderTarget.Format = format;
 	mRenderTarget.Samples = samples;
 }
 
@@ -564,7 +567,7 @@ void VkRenderState::BeginRenderPass(const VkRenderPassKey &key, VulkanCommandBuf
 		if (key.DrawBuffers > 2)
 			builder.addAttachment(buffers->SceneNormalView.get());
 		if (key.UsesDepthStencil())
-			builder.addAttachment(buffers->SceneDepthStencilView.get());
+			builder.addAttachment(mRenderTarget.DepthStencil);
 		framebuffer = builder.create(GetVulkanFrameBuffer()->device);
 		framebuffer->SetDebugName("VkRenderPassSetup.Framebuffer");
 	}
