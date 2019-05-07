@@ -256,6 +256,18 @@ static void OptActivate(struct Option *opt)
     }
 }
 
+static void OptReset(struct Option *opt)
+{
+    if (opt->type == OPT_STRING)
+    {
+        opt->string[0] = 0;
+    }
+    else if (opt->type == OPT_FILE)
+    {
+        opt->file.val[0] = 0;
+    }
+}
+
 static void OptsUpdate(struct Menu *menu)
 {
     struct Option *opts = menu->opts;
@@ -279,6 +291,8 @@ static void OptsUpdate(struct Menu *menu)
 
     if (IN_ButtonPressed(B_A))
         OptActivate(opts + menu->sel);
+    else if (IN_ButtonPressed(B_X))
+        OptReset(opts + menu->sel);
     else if (IN_ButtonPressed(B_DLEFT))
         OptScroll(opts + menu->sel, -1);
     else if (IN_ButtonPressed(B_DRIGHT))
