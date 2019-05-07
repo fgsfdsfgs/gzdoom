@@ -25,7 +25,6 @@ struct Profile fs_profiles[MAX_PROFILES] =
     { "Doom", "doom.wad" },
     { "FreeDM", "freedm.wad" },
     { "FreeDoom: Phase 1", "freedoom1.wad" },
-    { "FreeDoom: Phase 2", "freedoom2.wad" },
     { "Chex Quest", "chex.wad" },
     { "Doom II", "doom2.wad" },
     { "Final Doom: TNT Evilution", "tnt.wad" },

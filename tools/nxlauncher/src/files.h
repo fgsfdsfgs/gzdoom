@@ -5,7 +5,7 @@
 #define MAX_DEHS  2
 #define MAX_PROFILES 32
 #define MAX_ARGV 4096
-#define BUILTIN_PROFILES 14
+#define BUILTIN_PROFILES 13
 
 struct FileList
 {
