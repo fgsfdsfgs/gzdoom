@@ -194,7 +194,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			{
 				for (i = 0; i < lcount; i++)
 				{
-					int position = '!' + i;
+					int position = lfirst + i;
 					mysnprintf(buffer, countof(buffer), nametemplate, i + start);
 
 					lump = TexMan.CheckForTexture(buffer, ETextureType::MiscPatch);
@@ -253,7 +253,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 				{
 					if (texs[i])
 					{
-						int position = '!' + i;
+						int position = lfirst + i;
 						Type = Multilump;
 						if (position < minchar) minchar = position;
 						if (position > maxchar) maxchar = position;
@@ -1044,7 +1044,7 @@ bool FFont::CanPrint(const uint8_t *string) const
 		else if (chr != '\n')
 		{
 			int cc = GetCharCode(chr, true);
-			if (chr != cc && iswalpha(chr))
+			if (chr != cc && iswalpha(chr) && cc != getAlternative(chr))
 			{
 				return false;
 			}

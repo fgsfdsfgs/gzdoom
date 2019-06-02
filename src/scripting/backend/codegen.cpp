@@ -4835,7 +4835,7 @@ ExpEmit FxConditional::Emit(VMFunctionBuilder *build)
 			// If this is a local variable we need another register for the result.
 			if (trueop.Fixed)
 			{
-				out = ExpEmit(build, trueop.RegType);
+				out = ExpEmit(build, trueop.RegType, trueop.RegCount);
 				build->Emit(truex->ValueType->GetMoveOp(), out.RegNum, trueop.RegNum, 0);
 			}
 			else out = trueop;
@@ -6127,18 +6127,15 @@ FxExpression *FxIdentifier::Resolve(FCompileContext& ctx)
 			{
 				if (sym->mVersion <= ctx.Version)
 				{
-					if (!(ctx.Function->Variants[0].Flags & VARF_Deprecated) && Wads.GetLumpFile(ctx.Lump) == 0)
-					{
-						ScriptPosition.Message(MSG_WARNING, "Accessing deprecated global variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
-					}
-					else
-					{
-						// Allow use of deprecated symbols in deprecated functions of the internal code. This is meant to allow deprecated code to remain as it was, 
-						// even if it depends on some deprecated symbol. 
-						// The main motivation here is to keep the deprecated static functions accessing the global level variable as they were.
-						// Print these only if debug output is active and at the highest verbosity level.
-						ScriptPosition.Message(MSG_DEBUGMSG, TEXTCOLOR_BLUE "Accessing deprecated global variable %s - deprecated since %d.%d.%d", sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
-					}
+					// Allow use of deprecated symbols in deprecated functions of the internal code. This is meant to allow deprecated code to remain as it was, 
+					// even if it depends on some deprecated symbol. 
+					// The main motivation here is to keep the deprecated static functions accessing the global level variable as they were.
+					// Print these only if debug output is active and at the highest verbosity level.
+					const bool internal = (ctx.Function->Variants[0].Flags & VARF_Deprecated) && Wads.GetLumpFile(ctx.Lump) == 0;
+
+					ScriptPosition.Message(internal ? MSG_DEBUGMSG : MSG_WARNING, 
+						"%sAccessing deprecated global variable %s - deprecated since %d.%d.%d", internal ? TEXTCOLOR_BLUE : "",
+						sym->SymbolName.GetChars(), vsym->mVersion.major, vsym->mVersion.minor, vsym->mVersion.revision);
 				}
 			}
 			

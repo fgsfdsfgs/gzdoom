@@ -37,7 +37,7 @@ elseif( SWITCH_LIBNX )
 	include_directories( ${CMAKE_SOURCE_DIR}/nx/gdtoa )
 endif()
 
-add_library( gdtoa
+add_library( gdtoa STATIC
 	${GEN_FP_FILES}
 	dmisc.c
 	dtoa.c

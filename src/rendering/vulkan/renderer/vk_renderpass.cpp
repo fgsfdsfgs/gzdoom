@@ -165,12 +165,17 @@ void VkRenderPassManager::UpdateDynamicSet()
 {
 	auto fb = GetVulkanFrameBuffer();
 
+	// In some rare cases drawing commands may already have been created before VulkanFrameBuffer::BeginFrame is called.
+	// Make sure there there are no active command buffers using DynamicSet when we update it:
+	fb->GetRenderState()->EndRenderPass();
+	fb->WaitForCommands(false);
+
 	WriteDescriptors update;
 	update.addBuffer(DynamicSet.get(), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, fb->ViewpointUBO->mBuffer.get(), 0, sizeof(HWViewpointUniforms));
 	update.addBuffer(DynamicSet.get(), 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, fb->LightBufferSSO->mBuffer.get());
 	update.addBuffer(DynamicSet.get(), 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, fb->MatricesUBO->mBuffer.get(), 0, sizeof(MatricesUBO));
 	update.addBuffer(DynamicSet.get(), 3, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, fb->StreamUBO->mBuffer.get(), 0, sizeof(StreamUBO));
-	update.addCombinedImageSampler(DynamicSet.get(), 4, fb->GetBuffers()->ShadowmapView.get(), fb->GetBuffers()->ShadowmapSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	update.addCombinedImageSampler(DynamicSet.get(), 4, fb->GetBuffers()->Shadowmap.View.get(), fb->GetBuffers()->ShadowmapSampler.get(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	update.updateSets(fb->device);
 }
 
@@ -195,13 +200,11 @@ std::unique_ptr<VulkanDescriptorSet> VkRenderPassManager::AllocateTextureDescrip
 
 /////////////////////////////////////////////////////////////////////////////
 
-VkRenderPassSetup::VkRenderPassSetup(const VkRenderPassKey &key)
+VkRenderPassSetup::VkRenderPassSetup(const VkRenderPassKey &key) : PassKey(key)
 {
-	CreateRenderPass(key);
-	CreatePipeline(key);
 }
 
-void VkRenderPassSetup::CreateRenderPass(const VkRenderPassKey &key)
+std::unique_ptr<VulkanRenderPass> VkRenderPassSetup::CreateRenderPass(int clearTargets)
 {
 	auto buffers = GetVulkanFrameBuffer()->GetBuffers();
 
@@ -210,31 +213,31 @@ void VkRenderPassSetup::CreateRenderPass(const VkRenderPassKey &key)
 	RenderPassBuilder builder;
 
 	builder.addAttachment(
-		key.DrawBufferFormat, (VkSampleCountFlagBits)key.Samples,
-		(key.ClearTargets & CT_Color) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+		PassKey.DrawBufferFormat, (VkSampleCountFlagBits)PassKey.Samples,
+		(clearTargets & CT_Color) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
 		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-	for (int i = 1; i < key.DrawBuffers; i++)
+	for (int i = 1; i < PassKey.DrawBuffers; i++)
 	{
 		builder.addAttachment(
 			drawBufferFormats[i], buffers->GetSceneSamples(),
-			(key.ClearTargets & CT_Color) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+			(clearTargets & CT_Color) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
 			VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	}
-	if (key.UsesDepthStencil())
+	if (PassKey.DepthStencil)
 	{
 		builder.addDepthStencilAttachment(
-			buffers->SceneDepthStencilFormat, key.DrawBufferFormat == VK_FORMAT_R8G8B8A8_UNORM ? VK_SAMPLE_COUNT_1_BIT : buffers->GetSceneSamples(),
-			(key.ClearTargets & CT_Depth) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
-			(key.ClearTargets & CT_Stencil) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+			buffers->SceneDepthStencilFormat, PassKey.DrawBufferFormat == VK_FORMAT_R8G8B8A8_UNORM ? VK_SAMPLE_COUNT_1_BIT : buffers->GetSceneSamples(),
+			(clearTargets & CT_Depth) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+			(clearTargets & CT_Stencil) ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
 			VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 	}
 	builder.addSubpass();
-	for (int i = 0; i < key.DrawBuffers; i++)
+	for (int i = 0; i < PassKey.DrawBuffers; i++)
 		builder.addSubpassColorAttachmentRef(i, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	if (key.UsesDepthStencil())
+	if (PassKey.DepthStencil)
 	{
-		builder.addSubpassDepthStencilAttachmentRef(key.DrawBuffers, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		builder.addSubpassDepthStencilAttachmentRef(PassKey.DrawBuffers, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 		builder.addExternalSubpassDependency(
 			VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -249,11 +252,27 @@ void VkRenderPassSetup::CreateRenderPass(const VkRenderPassKey &key)
 			VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
 			VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
 	}
-	RenderPass = builder.create(GetVulkanFrameBuffer()->device);
-	RenderPass->SetDebugName("VkRenderPassSetup.RenderPass");
+	auto renderpass = builder.create(GetVulkanFrameBuffer()->device);
+	renderpass->SetDebugName("VkRenderPassSetup.RenderPass");
+	return renderpass;
 }
 
-void VkRenderPassSetup::CreatePipeline(const VkRenderPassKey &key)
+VulkanRenderPass *VkRenderPassSetup::GetRenderPass(int clearTargets)
+{
+	if (!RenderPasses[clearTargets])
+		RenderPasses[clearTargets] = CreateRenderPass(clearTargets);
+	return RenderPasses[clearTargets].get();
+}
+
+VulkanPipeline *VkRenderPassSetup::GetPipeline(const VkPipelineKey &key)
+{
+	auto &item = Pipelines[key];
+	if (!item)
+		item = CreatePipeline(key);
+	return item.get();
+}
+
+std::unique_ptr<VulkanPipeline> VkRenderPassSetup::CreatePipeline(const VkPipelineKey &key)
 {
 	auto fb = GetVulkanFrameBuffer();
 	GraphicsPipelineBuilder builder;
@@ -261,11 +280,11 @@ void VkRenderPassSetup::CreatePipeline(const VkRenderPassKey &key)
 	VkShaderProgram *program;
 	if (key.SpecialEffect != EFF_NONE)
 	{
-		program = fb->GetShaderManager()->GetEffect(key.SpecialEffect, key.DrawBuffers > 1 ? GBUFFER_PASS : NORMAL_PASS);
+		program = fb->GetShaderManager()->GetEffect(key.SpecialEffect, PassKey.DrawBuffers > 1 ? GBUFFER_PASS : NORMAL_PASS);
 	}
 	else
 	{
-		program = fb->GetShaderManager()->Get(key.EffectState, key.AlphaTest, key.DrawBuffers > 1 ? GBUFFER_PASS : NORMAL_PASS);
+		program = fb->GetShaderManager()->Get(key.EffectState, key.AlphaTest, PassKey.DrawBuffers > 1 ? GBUFFER_PASS : NORMAL_PASS);
 	}
 	builder.addVertexShader(program->vert.get());
 	builder.addFragmentShader(program->frag.get());
@@ -293,7 +312,7 @@ void VkRenderPassSetup::CreatePipeline(const VkRenderPassKey &key)
 		inputLocations[attr.location] = true;
 	}
 
-	// To do: does vulkan absolutely needs a binding for each location or not? What happens if it isn't specified? Better be safe than sorry..
+	// Vulkan requires an attribute binding for each location specified in the shader
 	for (int i = 0; i < 6; i++)
 	{
 		if (!inputLocations[i])
@@ -338,11 +357,12 @@ void VkRenderPassSetup::CreatePipeline(const VkRenderPassKey &key)
 	builder.setColorWriteMask((VkColorComponentFlags)key.ColorMask);
 	builder.setStencil(VK_STENCIL_OP_KEEP, op2vk[key.StencilPassOp], VK_STENCIL_OP_KEEP, VK_COMPARE_OP_EQUAL, 0xffffffff, 0xffffffff, 0);
 	builder.setBlendMode(key.RenderStyle);
-	builder.setSubpassColorAttachmentCount(key.DrawBuffers);
-	builder.setRasterizationSamples((VkSampleCountFlagBits)key.Samples);
+	builder.setSubpassColorAttachmentCount(PassKey.DrawBuffers);
+	builder.setRasterizationSamples((VkSampleCountFlagBits)PassKey.Samples);
 
 	builder.setLayout(fb->GetRenderPassManager()->GetPipelineLayout(key.NumTextureLayers));
-	builder.setRenderPass(RenderPass.get());
-	Pipeline = builder.create(fb->device);
-	Pipeline->SetDebugName("VkRenderPassSetup.Pipeline");
+	builder.setRenderPass(GetRenderPass(0));
+	auto pipeline = builder.create(fb->device);
+	pipeline->SetDebugName("VkRenderPassSetup.Pipeline");
+	return pipeline;
 }

@@ -195,62 +195,54 @@ void VkRenderState::ApplyDepthBias()
 
 void VkRenderState::ApplyRenderPass(int dt)
 {
-	// Find a render pass that matches our state
-	VkRenderPassKey passKey;
-	passKey.ClearTargets = mRenderPassKey.ClearTargets | mClearTargets;
-	passKey.DrawType = dt;
-	passKey.VertexFormat = static_cast<VKVertexBuffer*>(mVertexBuffer)->VertexFormat;
-	passKey.RenderStyle = mRenderStyle;
-	passKey.DepthTest = mDepthTest;
-	passKey.DepthWrite = mDepthTest && mDepthWrite;
-	passKey.DepthFunc = mDepthFunc;
-	passKey.DepthClamp = mDepthClamp;
-	passKey.DepthBias = !(mBias.mFactor == 0 && mBias.mUnits == 0);
-	passKey.StencilTest = mStencilTest;
-	passKey.StencilPassOp = mStencilOp;
-	passKey.ColorMask = mColorMask;
-	passKey.CullMode = mCullMode;
-	passKey.DrawBufferFormat = mRenderTarget.Format;
-	passKey.Samples = mRenderTarget.Samples;
-	passKey.DrawBuffers = mRenderTarget.DrawBuffers;
-	passKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->GetLayers() : 0;
+	// Find a pipeline that matches our state
+	VkPipelineKey pipelineKey;
+	pipelineKey.DrawType = dt;
+	pipelineKey.VertexFormat = static_cast<VKVertexBuffer*>(mVertexBuffer)->VertexFormat;
+	pipelineKey.RenderStyle = mRenderStyle;
+	pipelineKey.DepthTest = mDepthTest;
+	pipelineKey.DepthWrite = mDepthTest && mDepthWrite;
+	pipelineKey.DepthFunc = mDepthFunc;
+	pipelineKey.DepthClamp = mDepthClamp;
+	pipelineKey.DepthBias = !(mBias.mFactor == 0 && mBias.mUnits == 0);
+	pipelineKey.StencilTest = mStencilTest;
+	pipelineKey.StencilPassOp = mStencilOp;
+	pipelineKey.ColorMask = mColorMask;
+	pipelineKey.CullMode = mCullMode;
+	pipelineKey.NumTextureLayers = mMaterial.mMaterial ? mMaterial.mMaterial->GetLayers() : 0;
 	if (mSpecialEffect > EFF_NONE)
 	{
-		passKey.SpecialEffect = mSpecialEffect;
-		passKey.EffectState = 0;
-		passKey.AlphaTest = false;
+		pipelineKey.SpecialEffect = mSpecialEffect;
+		pipelineKey.EffectState = 0;
+		pipelineKey.AlphaTest = false;
 	}
 	else
 	{
 		int effectState = mMaterial.mOverrideShader >= 0 ? mMaterial.mOverrideShader : (mMaterial.mMaterial ? mMaterial.mMaterial->GetShaderIndex() : 0);
-		passKey.SpecialEffect = EFF_NONE;
-		passKey.EffectState = mTextureEnabled ? effectState : SHADER_NoTexture;
-		passKey.AlphaTest = mAlphaThreshold >= 0.f;
+		pipelineKey.SpecialEffect = EFF_NONE;
+		pipelineKey.EffectState = mTextureEnabled ? effectState : SHADER_NoTexture;
+		pipelineKey.AlphaTest = mAlphaThreshold >= 0.f;
 	}
 
-	// Is this the one we already have or do we need to change render pass?
-	bool changingRenderPass = (passKey != mRenderPassKey);
+	// Is this the one we already have?
+	bool inRenderPass = mCommandBuffer;
+	bool changingPipeline = (!inRenderPass) || (pipelineKey != mPipelineKey);
 
-	if (!mCommandBuffer)
+	if (!inRenderPass)
 	{
 		mCommandBuffer = GetVulkanFrameBuffer()->GetDrawCommands();
-		changingRenderPass = true;
 		mScissorChanged = true;
 		mViewportChanged = true;
 		mStencilRefChanged = true;
 		mBias.mChanged = true;
-	}
-	else if (changingRenderPass)
-	{
-		mCommandBuffer->endRenderPass();
+
+		BeginRenderPass(mCommandBuffer);
 	}
 
-	if (changingRenderPass)
+	if (changingPipeline)
 	{
-		passKey.ClearTargets = mClearTargets;
-		BeginRenderPass(passKey, mCommandBuffer);
-		mRenderPassKey = passKey;
-		mClearTargets = 0;
+		mCommandBuffer->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, mPassSetup->GetPipeline(pipelineKey));
+		mPipelineKey = pipelineKey;
 	}
 }
 
@@ -380,7 +372,7 @@ void VkRenderState::ApplyPushConstants()
 
 	auto fb = GetVulkanFrameBuffer();
 	auto passManager = fb->GetRenderPassManager();
-	mCommandBuffer->pushConstants(passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
+	mCommandBuffer->pushConstants(passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, (uint32_t)sizeof(PushConstants), &mPushConstants);
 }
 
 template<typename T>
@@ -466,7 +458,7 @@ void VkRenderState::ApplyMaterial()
 		{
 			auto fb = GetVulkanFrameBuffer();
 			auto passManager = fb->GetRenderPassManager();
-			mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), 1, base->GetDescriptorSet(mMaterial));
+			mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), 1, base->GetDescriptorSet(mMaterial));
 		}
 
 		mMaterial.mChanged = false;
@@ -481,7 +473,7 @@ void VkRenderState::ApplyDynamicSet()
 		auto passManager = fb->GetRenderPassManager();
 
 		uint32_t offsets[3] = { mViewpointOffset, mMatricesOffset, mStreamDataOffset };
-		mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mRenderPassKey.NumTextureLayers), 0, passManager->DynamicSet.get(), 3, offsets);
+		mCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, passManager->GetPipelineLayout(mPipelineKey.NumTextureLayers), 0, passManager->DynamicSet.get(), 3, offsets);
 
 		mLastViewpointOffset = mViewpointOffset;
 		mLastMatricesOffset = mMatricesOffset;
@@ -510,7 +502,7 @@ void VkRenderState::EndRenderPass()
 	{
 		mCommandBuffer->endRenderPass();
 		mCommandBuffer = nullptr;
-		mRenderPassKey = {};
+		mPipelineKey = {};
 
 		mLastViewpointOffset = 0xffffffff;
 		mLastVertexBuffer = nullptr;
@@ -548,32 +540,42 @@ void VkRenderState::SetRenderTarget(VulkanImageView *view, VulkanImageView *dept
 	mRenderTarget.Samples = samples;
 }
 
-void VkRenderState::BeginRenderPass(const VkRenderPassKey &key, VulkanCommandBuffer *cmdbuffer)
+void VkRenderState::BeginRenderPass(VulkanCommandBuffer *cmdbuffer)
 {
 	auto fb = GetVulkanFrameBuffer();
 
-	VkRenderPassSetup *passSetup = fb->GetRenderPassManager()->GetRenderPass(key);
+	VkRenderPassKey key = {};
+	key.DrawBufferFormat = mRenderTarget.Format;
+	key.Samples = mRenderTarget.Samples;
+	key.DrawBuffers = mRenderTarget.DrawBuffers;
+	key.DepthStencil = !!mRenderTarget.DepthStencil;
 
-	auto &framebuffer = passSetup->Framebuffer[mRenderTarget.View->view];
+	mPassSetup = fb->GetRenderPassManager()->GetRenderPass(key);
+
+	auto &framebuffer = mPassSetup->Framebuffer[mRenderTarget.View->view];
 	if (!framebuffer)
 	{
 		auto buffers = fb->GetBuffers();
 		FramebufferBuilder builder;
-		builder.setRenderPass(passSetup->RenderPass.get());
+		builder.setRenderPass(mPassSetup->GetRenderPass(0));
 		builder.setSize(mRenderTarget.Width, mRenderTarget.Height);
 		builder.addAttachment(mRenderTarget.View);
 		if (key.DrawBuffers > 1)
-			builder.addAttachment(buffers->SceneFogView.get());
+			builder.addAttachment(buffers->SceneFog.View.get());
 		if (key.DrawBuffers > 2)
-			builder.addAttachment(buffers->SceneNormalView.get());
-		if (key.UsesDepthStencil())
+			builder.addAttachment(buffers->SceneNormal.View.get());
+		if (key.DepthStencil)
 			builder.addAttachment(mRenderTarget.DepthStencil);
 		framebuffer = builder.create(GetVulkanFrameBuffer()->device);
 		framebuffer->SetDebugName("VkRenderPassSetup.Framebuffer");
 	}
 
+	// Only clear depth+stencil if the render target actually has that
+	if (!mRenderTarget.DepthStencil)
+		mClearTargets &= ~(CT_Depth | CT_Stencil);
+
 	RenderPassBegin beginInfo;
-	beginInfo.setRenderPass(passSetup->RenderPass.get());
+	beginInfo.setRenderPass(mPassSetup->GetRenderPass(mClearTargets));
 	beginInfo.setRenderArea(0, 0, mRenderTarget.Width, mRenderTarget.Height);
 	beginInfo.setFramebuffer(framebuffer.get());
 	beginInfo.addClearColor(screen->mSceneClearColor[0], screen->mSceneClearColor[1], screen->mSceneClearColor[2], screen->mSceneClearColor[3]);
@@ -583,9 +585,9 @@ void VkRenderState::BeginRenderPass(const VkRenderPassKey &key, VulkanCommandBuf
 		beginInfo.addClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	beginInfo.addClearDepthStencil(1.0f, 0);
 	cmdbuffer->beginRenderPass(beginInfo);
-	cmdbuffer->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, passSetup->Pipeline.get());
 
 	mMaterial.mChanged = true;
+	mClearTargets = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////

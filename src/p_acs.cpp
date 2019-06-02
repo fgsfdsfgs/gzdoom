@@ -3768,8 +3768,7 @@ int DLevelScript::DoSpawn (int type, const DVector3 &pos, int tid, DAngle angle,
 			if (force || P_TestMobjLocation (actor))
 			{
 				actor->Angles.Yaw = angle;
-				actor->tid = tid;
-				actor->AddToHash ();
+				actor->SetTID(tid);
 				if (actor->flags & MF_SPECIAL)
 					actor->flags |= MF_DROPPED;  // Don't respawn
 				actor->flags2 = oldFlags2;
@@ -5856,8 +5855,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 					AActor *puff = P_LineAttack(activator, angle, range, pitch, damage, damagetype, pufftype, fhflags);
 					if (puff != NULL && pufftid != 0)
 					{
-						puff->tid = pufftid;
-						puff->AddToHash();
+						puff->SetTID(pufftid);
 					}
 				}
 				else
@@ -5870,8 +5868,7 @@ int DLevelScript::CallFunction(int argCount, int funcIndex, int32_t *args)
 						AActor *puff = P_LineAttack(source, angle, range, pitch, damage, damagetype, pufftype, fhflags);
 						if (puff != NULL && pufftid != 0)
 						{
-							puff->tid = pufftid;
-							puff->AddToHash();
+							puff->SetTID(pufftid);
 						}
 					}
 				}
@@ -6291,9 +6288,7 @@ doplaysound:			if (funcIndex == ACSF_PlayActorSound)
 
 				if ((pickedActor->tid == 0) || (flags & PICKAF_FORCETID))
 				{
-					pickedActor->RemoveFromHash();
-					pickedActor->tid = args[4];
-					pickedActor->AddToHash();
+					pickedActor->SetTID(args[4]);
 				}
 				if (flags & PICKAF_RETURNTID)
 				{
@@ -9101,7 +9096,7 @@ scriptwait:
 			break;
 
 		case PCD_CLEARINVENTORY:
-			ScriptUtil::Exec(NAME_ClearInventory, ScriptUtil::Pointer, activator, ScriptUtil::End);
+			ScriptUtil::Exec(NAME_ClearInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::End);
 			break;
 
 		case PCD_CLEARACTORINVENTORY:
@@ -9124,7 +9119,7 @@ scriptwait:
 		case PCD_GIVEINVENTORY:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(STACK(2))).GetIndex();
-			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 		}
@@ -9153,7 +9148,7 @@ scriptwait:
 		case PCD_GIVEINVENTORYDIRECT:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
-			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_GiveInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
 		}
@@ -9161,7 +9156,7 @@ scriptwait:
 		case PCD_TAKEINVENTORY:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(STACK(2))).GetIndex();
-			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 		}
@@ -9190,7 +9185,7 @@ scriptwait:
 		case PCD_TAKEINVENTORYDIRECT:
 		{
 			int typeindex = FName(Level->Behaviors.LookupString(TAGSTR(uallong(pc[0])))).GetIndex();
-			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator, ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_TakeInventory, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, typeindex, ScriptUtil::Int, uallong(pc[1]), ScriptUtil::End);
 			pc += 2;
 			break;
 		}
@@ -9622,16 +9617,16 @@ scriptwait:
             break;
 
 		case PCD_SETWEAPON:
-			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator, ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
+			STACK(1) = ScriptUtil::Exec(NAME_SetWeapon, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			break;
 
 		case PCD_SETMARINEWEAPON:
-			ScriptUtil::Exec(NAME_SetMarineWeapon, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::Int, STACK(1), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_SetMarineWeapon, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, STACK(2), ScriptUtil::Int, STACK(1), ScriptUtil::End);
 			sp -= 2;
 			break;
 
 		case PCD_SETMARINESPRITE:
-			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator, ScriptUtil::Int, STACK(2), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
+			ScriptUtil::Exec(NAME_SetMarineSprite, ScriptUtil::Pointer, Level, ScriptUtil::Pointer, activator.Get(), ScriptUtil::Int, STACK(2), ScriptUtil::Class, GetClassForIndex(STACK(1)), ScriptUtil::End);
 			sp -= 2;
 			break;
 
@@ -10459,7 +10454,7 @@ CCMD (scriptstat)
 {
 	for (auto Level : AllLevels())
 	{
-		Printf("Script status for %s", Level->MapName.GetChars());
+		Printf("Script status for %s\n", Level->MapName.GetChars());
 		if (Level->ACSThinker == nullptr)
 		{
 			Printf("No scripts are running.\n");

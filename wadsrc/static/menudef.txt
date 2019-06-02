@@ -1012,6 +1012,7 @@ OptionMenu "HUDOptions" protected
 	Submenu "$HUDMNU_FLASH", 				"FlashOptions"
 	Submenu "$DSPLYMNU_SCOREBOARD", 		"ScoreboardOptions"
 	StaticText " "
+	Option "$HUDMNU_CROSSHAIRON",			"crosshairon", "OnOff"
 	Option "$HUDMNU_CROSSHAIR",				"crosshair", "Crosshairs"
 	Option "$HUDMNU_FORCECROSSHAIR",		"crosshairforce", "OnOff"
 	Option "$HUDMNU_GROWCROSSHAIR",			"crosshairgrow", "OnOff"
@@ -1468,6 +1469,7 @@ OptionMenu MessageOptions protected
 	Option "$MSGMNU_MESSAGELEVEL", 				"msg", "MessageLevels"
 	Option "$MSGMNU_DEVELOPER", 				"developer", "DevMessageLevels"
 	Option "$MSGMNU_CENTERMESSAGES",			"con_centernotify", "OnOff"
+	Option "$MSGMNU_SUBTITLES",					"inter_subtitles", "OnOff"
 	StaticText " "
 	StaticText "$MSGMNU_MESSAGECOLORS", 1
 	StaticText " "
@@ -2712,6 +2714,7 @@ OptionString "LanguageOptions"
 	"fr", "Français (French)"
 	"it", "Italiano (Italian)"
 	"ko", "한국의 (Korean)"
+	"ptg", "Português (European Portuguese)"
 	"pt", "Português do Brasil (Brazilian Portuguese)"
 	"ru", "Русский (Russian)"
 }
