@@ -387,6 +387,10 @@ FZipFile::~FZipFile()
 FCompressedBuffer FZipLump::GetRawData()
 {
 	FCompressedBuffer cbuf = { (unsigned)LumpSize, (unsigned)CompressedSize, Method, GPFlags, CRC32, new char[CompressedSize] };
+#ifdef __SWITCH__
+	// work around the fseek bug
+	Owner->Reader.Seek(0, FileReader::SeekSet);
+#endif
 	if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Owner->Reader.Read(cbuf.mBuffer, CompressedSize);
@@ -406,10 +410,6 @@ void FZipLump::SetLumpAddress()
 	// read and skip so that we can get to the actual file data.
 	FZipLocalFileHeader localHeader;
 	int skiplen;
-#ifdef __SWITCH__
-	// work around the fseek bug
-	Owner->Reader.Seek(0, FileReader::SeekSet);
-#endif
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Owner->Reader.Read(&localHeader, sizeof(localHeader));
 	skiplen = LittleShort(localHeader.NameLength) + LittleShort(localHeader.ExtraLength);
@@ -429,6 +429,10 @@ FileReader *FZipLump::GetReader()
 	// In that case always force caching of the lump
 	if (Method == METHOD_STORED)
 	{
+#ifdef __SWITCH__
+		// work around the fseek bug
+		Owner->Reader.Seek(0, FileReader::SeekSet);
+#endif
 		if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 		Owner->Reader.Seek(Position, FileReader::SeekSet);
 		return &Owner->Reader;
@@ -444,6 +448,11 @@ FileReader *FZipLump::GetReader()
 
 int FZipLump::FillCache()
 {
+#ifdef __SWITCH__
+	// work around the fseek bug
+	Owner->Reader.Seek(0, FileReader::SeekSet);
+#endif
+
 	if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 	const char *buffer;
 
@@ -454,10 +463,6 @@ int FZipLump::FillCache()
 		RefCount = -1;
 		return -1;
 	}
-#ifdef __SWITCH__
-	// work around the fseek bug
-	Owner->Reader.Seek(0, FileReader::SeekSet);
-#endif
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Cache = new char[LumpSize];
 	UncompressZipLump(Cache, Owner->Reader, Method, LumpSize, CompressedSize, GPFlags);
