@@ -4,6 +4,7 @@
 #include "vulkan/system/vk_buffers.h"
 #include "vulkan/shaders/vk_shader.h"
 #include "vulkan/renderer/vk_renderpass.h"
+#include "vulkan/renderer/vk_streambuffer.h"
 
 #include "name.h"
 
@@ -12,6 +13,7 @@
 #include "hwrenderer/textures/hw_material.h"
 
 class VkRenderPassSetup;
+class VkTextureImage;
 
 class VkRenderState : public FRenderState
 {
@@ -43,7 +45,7 @@ public:
 	void EnableDrawBuffers(int count) override;
 
 	void BeginFrame();
-	void SetRenderTarget(VulkanImageView *view, VulkanImageView *depthStencilView, int width, int height, VkFormat Format, VkSampleCountFlagBits samples);
+	void SetRenderTarget(VkTextureImage *image, VulkanImageView *depthStencilView, int width, int height, VkFormat Format, VkSampleCountFlagBits samples);
 	void Bind(int bindingpoint, uint32_t offset);
 	void EndRenderPass();
 	void EndFrame();
@@ -63,6 +65,7 @@ protected:
 	void ApplyMaterial();
 
 	void BeginRenderPass(VulkanCommandBuffer *cmdbuffer);
+	void WaitForStreamBuffers();
 
 	bool mDepthClamp = true;
 	VulkanCommandBuffer *mCommandBuffer = nullptr;
@@ -88,18 +91,15 @@ protected:
 	int mColorMask = 15;
 	int mCullMode = 0;
 
-	MatricesUBO mMatrices = {};
 	PushConstants mPushConstants = {};
 
 	uint32_t mLastViewpointOffset = 0xffffffff;
 	uint32_t mLastMatricesOffset = 0xffffffff;
 	uint32_t mLastStreamDataOffset = 0xffffffff;
 	uint32_t mViewpointOffset = 0;
-	uint32_t mMatricesOffset = 0;
-	uint32_t mDataIndex = -1;
-	uint32_t mStreamDataOffset = 0;
 
-	VSMatrix mIdentityMatrix;
+	VkStreamBufferWriter mStreamBufferWriter;
+	VkMatrixBufferWriter mMatrixBufferWriter;
 
 	int mLastVertexOffsets[2] = { 0, 0 };
 	IVertexBuffer *mLastVertexBuffer = nullptr;
@@ -112,7 +112,7 @@ protected:
 
 	struct RenderTarget
 	{
-		VulkanImageView *View = nullptr;
+		VkTextureImage *Image = nullptr;
 		VulkanImageView *DepthStencil = nullptr;
 		int Width = 0;
 		int Height = 0;

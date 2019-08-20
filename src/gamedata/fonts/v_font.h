@@ -103,6 +103,9 @@ public:
 	int GetSpaceWidth () const { return SpaceWidth; }
 	int GetHeight () const { return FontHeight; }
 	int GetDefaultKerning () const { return GlobalKerning; }
+	int GetMaxAscender(const uint8_t* text) const;
+	int GetMaxAscender(const char* text) const { return GetMaxAscender((uint8_t*)text); }
+	int GetMaxAscender(const FString &text) const { return GetMaxAscender((uint8_t*)text.GetChars()); }
 	virtual void LoadTranslations();
 	FName GetName() const { return FontName; }
 
@@ -127,6 +130,7 @@ public:
 	virtual void SetDefaultTranslation(uint32_t *colors);
 	void CheckCase();
 
+	int GetDisplacement() const { return Displacement; }
 
 
 protected:
@@ -145,8 +149,10 @@ protected:
 	int FirstChar, LastChar;
 	int SpaceWidth;
 	int FontHeight;
+	int AsciiHeight = 0;
 	int GlobalKerning;
 	int TranslationType = 0;
+	int Displacement = 0;
 	char Cursor;
 	bool noTranslate;
 	bool translateUntranslated;
@@ -184,8 +190,6 @@ PalEntry V_LogColorFromColorRange (EColorRange range);
 EColorRange V_ParseFontColor (const uint8_t *&color_value, int normalcolor, int boldcolor);
 FFont *V_GetFont(const char *fontname, const char *fontlumpname = nullptr);
 void V_InitFontColors();
-
-FFont * C_GetDefaultHUDFont();
 
 
 #endif //__V_FONT_H__

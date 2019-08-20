@@ -84,7 +84,7 @@ void DrawFullscreenSubtitle(const char *text)
 	auto scale = active_con_scaletext(generic_ui);
 	int hudwidth = SCREENWIDTH / scale;
 	int hudheight = SCREENHEIGHT / scale;
-	FFont *font = C_GetDefaultHUDFont();
+	FFont *font = generic_ui? NewSmallFont : SmallFont;
 
 	int linelen = hudwidth < 640 ? Scale(hudwidth, 9, 10) - 40 : 560;
 	auto lines = V_BreakLines(font, linelen, text);
@@ -859,6 +859,15 @@ bool DIntermissionController::Responder (event_t *ev)
 				 !stricmp(cmd, "screenshot")))
 			{
 				return false;
+			}
+
+			// The following is needed to be able to enter main menu with a controller,
+			// by pressing buttons that are usually assigned to this action, Start and Back by default
+			if (!stricmp(cmd, "menu_main") || !stricmp(cmd, "pause"))
+			{
+				M_StartControlPanel(true);
+				M_SetMenu(NAME_Mainmenu, -1);
+				return true;
 			}
 		}
 

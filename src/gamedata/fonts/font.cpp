@@ -233,7 +233,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					for (auto entry : array)
 					{
 						FTexture *tex = TexMan.GetTexture(entry, false);
-						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetIwadNum() && tex->UseType == ETextureType::MiscPatch)
+						if (tex && tex->SourceLump >= 0 && Wads.GetLumpFile(tex->SourceLump) <= Wads.GetMaxIwadNum() && tex->UseType == ETextureType::MiscPatch)
 						{
 							texs[i] = tex;
 						}
@@ -290,6 +290,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 		auto count = maxchar - minchar + 1;
 		Chars.Resize(count);
 		int fontheight = 0;
+		int asciiheight = 0;
 
 		for (i = 0; i < count; i++)
 		{
@@ -311,12 +312,19 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 					{
 						fontheight = height;
 					}
+					if (height > asciiheight && FirstChar + 1 < 128)
+					{
+						asciiheight = height;
+					}
 				}
 
-				pic->SetUseType(ETextureType::FontChar);
+				Chars[i].OriginalPic = new FImageTexture(pic->GetImage(), "");
+				Chars[i].OriginalPic->SetUseType(ETextureType::FontChar);
+				Chars[i].OriginalPic->CopySize(pic);
+				TexMan.AddTexture(Chars[i].OriginalPic);
+
 				if (!noTranslate)
 				{
-					Chars[i].OriginalPic = pic;
 					Chars[i].TranslatedPic = new FImageTexture(new FFontChar1(pic->GetImage()), "");
 					Chars[i].TranslatedPic->CopySize(pic);
 					Chars[i].TranslatedPic->SetUseType(ETextureType::FontChar);
@@ -324,7 +332,7 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 				}
 				else
 				{
-					Chars[i].TranslatedPic = pic;
+					Chars[i].TranslatedPic = Chars[i].OriginalPic;
 				}
 
 				Chars[i].XMove = Chars[i].TranslatedPic->GetDisplayWidth();
@@ -352,11 +360,14 @@ FFont::FFont (const char *name, const char *nametemplate, const char *filetempla
 			}
 		}
 		if (FontHeight == 0) FontHeight = fontheight;
+		if (AsciiHeight == 0) AsciiHeight = asciiheight;
 
 		FixXMoves();
 	}
 
 	if (!noTranslate) LoadTranslations();
+
+
 }
 
 void FFont::ReadSheetFont(TArray<FolderEntry> &folderdata, int width, int height, const DVector2 &Scale)
@@ -436,10 +447,13 @@ void FFont::ReadSheetFont(TArray<FolderEntry> &folderdata, int width, int height
 
 			auto b = pic->Get8BitPixels(false);
 
-			Chars[i].OriginalPic = pic;
+			Chars[i].OriginalPic = new FImageTexture(pic->GetImage(), "");
+			Chars[i].OriginalPic->SetUseType(ETextureType::FontChar);
+			Chars[i].OriginalPic->CopySize(pic);
 			Chars[i].TranslatedPic = new FImageTexture(new FFontChar1(pic->GetImage()), "");
 			Chars[i].TranslatedPic->CopySize(pic);
 			Chars[i].TranslatedPic->SetUseType(ETextureType::FontChar);
+			TexMan.AddTexture(Chars[i].OriginalPic);
 			TexMan.AddTexture(Chars[i].TranslatedPic);
 		}
 		Chars[i].XMove = width;
@@ -1101,6 +1115,53 @@ int FFont::StringWidth(const uint8_t *string) const
 
 //==========================================================================
 //
+// Get the largest ascender in the first line of this text.
+//
+//==========================================================================
+
+int FFont::GetMaxAscender(const uint8_t* string) const
+{
+	int retval = 0;
+
+	while (*string)
+	{
+		auto chr = GetCharFromString(string);
+		if (chr == TEXTCOLOR_ESCAPE)
+		{
+			// We do not need to check for UTF-8 in here.
+			if (*string == '[')
+			{
+				while (*string != '\0' && *string != ']')
+				{
+					++string;
+				}
+			}
+			if (*string != '\0')
+			{
+				++string;
+			}
+			continue;
+		}
+		else if (chr == '\n')
+		{
+			break;
+		}
+		else
+		{
+			auto ctex = GetChar(chr, CR_UNTRANSLATED, nullptr);
+			if (ctex)
+			{
+				auto offs = int(ctex->GetScaledTopOffset(0));
+				if (offs > retval) retval = offs;
+			}
+		}
+	}
+
+	return retval;
+}
+
+//==========================================================================
+//
 // FFont :: LoadTranslations
 //
 //==========================================================================
@@ -1190,6 +1251,11 @@ void FFont::FixXMoves()
 				}
 			}
 			Chars[i].XMove = SpaceWidth;
+		}
+		if (Chars[i].OriginalPic)
+		{
+			int ofs = Chars[i].OriginalPic->GetScaledTopOffset(0);
+			if (ofs > Displacement) Displacement = ofs;
 		}
 	}
 }

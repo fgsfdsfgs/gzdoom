@@ -44,7 +44,7 @@ uint32_t VulkanSwapChain::AcquireImage(int width, int height, VulkanSemaphore *s
 		{
 			break;
 		}
-		else if (result == VK_SUBOPTIMAL_KHR)
+		else if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_SURFACE_LOST_KHR)
 		{
 			// Force the recreate to happen next frame.
 			// The spec is not very clear about what happens to the semaphore or the acquired image if the swapchain is recreated before the image is released with a call to vkQueuePresentKHR.
@@ -69,10 +69,6 @@ uint32_t VulkanSwapChain::AcquireImage(int width, int height, VulkanSemaphore *s
 		{
 			VulkanError("vkAcquireNextImageKHR failed: device lost");
 		}
-		else if (result == VK_ERROR_SURFACE_LOST_KHR)
-		{
-			VulkanError("vkAcquireNextImageKHR failed: surface lost");
-		}
 		else
 		{
 			VulkanError("vkAcquireNextImageKHR failed");
@@ -92,7 +88,7 @@ void VulkanSwapChain::QueuePresent(uint32_t imageIndex, VulkanSemaphore *semapho
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr;
 	VkResult result = vkQueuePresentKHR(device->presentQueue, &presentInfo);
-	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR)
+	if (result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_ERROR_SURFACE_LOST_KHR)
 	{
 		lastSwapWidth = 0;
 		lastSwapHeight = 0;
@@ -107,10 +103,6 @@ void VulkanSwapChain::QueuePresent(uint32_t imageIndex, VulkanSemaphore *semapho
 	else if (result == VK_ERROR_DEVICE_LOST)
 	{
 		VulkanError("vkQueuePresentKHR failed: device lost");
-	}
-	else if (result == VK_ERROR_SURFACE_LOST_KHR)
-	{
-		VulkanError("vkQueuePresentKHR failed: surface lost");
 	}
 	else if (result != VK_SUCCESS)
 	{
@@ -207,6 +199,7 @@ bool VulkanSwapChain::CreateSwapChain(VkSwapchainKHR oldSwapChain)
 
 void VulkanSwapChain::CreateViews()
 {
+	framebuffers.resize(swapChainImages.size());
 	swapChainImageViews.reserve(swapChainImages.size());
 	for (size_t i = 0; i < swapChainImages.size(); i++)
 	{
@@ -335,6 +328,7 @@ void VulkanSwapChain::GetImages()
 
 void VulkanSwapChain::ReleaseViews()
 {
+	framebuffers.clear();
 	for (auto &view : swapChainImageViews)
 	{
 		vkDestroyImageView(device->device, view, nullptr);

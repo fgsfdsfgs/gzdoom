@@ -2000,6 +2000,17 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetHeight, GetHeight)
 	ACTION_RETURN_INT(self->GetHeight());
 }
 
+static int GetDisplacement(FFont* font)
+{
+	return font->GetDisplacement();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetDisplacement, GetDisplacement)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	ACTION_RETURN_INT(self->GetDisplacement());
+}
+
 double GetBottomAlignOffset(FFont *font, int c);
 DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetBottomAlignOffset, GetBottomAlignOffset)
 {
@@ -2019,6 +2030,19 @@ DEFINE_ACTION_FUNCTION_NATIVE(FFont, StringWidth, StringWidth)
 	PARAM_SELF_STRUCT_PROLOGUE(FFont);
 	PARAM_STRING(str);
 	ACTION_RETURN_INT(StringWidth(self, str));
+}
+
+static int GetMaxAscender(FFont* font, const FString& str)
+{
+	const char* txt = str[0] == '$' ? GStrings(&str[1]) : str.GetChars();
+	return font->GetMaxAscender(txt);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FFont, GetMaxAscender, GetMaxAscender)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FFont);
+	PARAM_STRING(str);
+	ACTION_RETURN_INT(GetMaxAscender(self, str));
 }
 
 static int CanPrint(FFont *font, const FString &str)
@@ -2952,7 +2976,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SphericalCoords, SphericalCoords)
 	PARAM_FLOAT(viewPitch);
 	PARAM_BOOL(absolute);
 	DVector3 result;
-	SphericalCoords(self, viewpointX, viewpointY, viewpointZ, targetX, targetY, targetZ, viewYaw, viewpointZ, absolute, &result);
+	SphericalCoords(self, viewpointX, viewpointY, viewpointZ, targetX, targetY, targetZ, viewYaw, viewPitch, absolute, &result);
 	ACTION_RETURN_VEC3(result);
 }
 
@@ -2965,7 +2989,7 @@ static int isFrozen(FLevelLocals *self)
 DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, isFrozen, isFrozen)
 {
 	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
-	return isFrozen(self);
+	ACTION_RETURN_INT(isFrozen(self));
 }
 
 void setFrozen(FLevelLocals *self, int on)
@@ -3037,6 +3061,7 @@ DEFINE_FIELD(FLevelLocals, MapName)
 DEFINE_FIELD(FLevelLocals, NextMap)
 DEFINE_FIELD(FLevelLocals, NextSecretMap)
 DEFINE_FIELD(FLevelLocals, F1Pic)
+DEFINE_FIELD(FLevelLocals, AuthorName)
 DEFINE_FIELD(FLevelLocals, maptype)
 DEFINE_FIELD(FLevelLocals, Music)
 DEFINE_FIELD(FLevelLocals, musicorder)

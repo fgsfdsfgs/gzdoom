@@ -64,7 +64,6 @@
 #include "p_acs.h"
 #include "p_effect.h"
 #include "m_joy.h"
-#include "r_renderer.h"
 #include "r_utility.h"
 #include "a_morph.h"
 #include "p_spec.h"
@@ -95,8 +94,9 @@ void	G_DoPlayDemo (void);
 void	G_DoCompleted (void);
 void	G_DoVictory (void);
 void	G_DoWorldDone (void);
-void	G_DoSaveGame (bool okForQuicksave, FString filename, const char *description);
+void	G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, const char *description);
 void	G_DoAutoSave ();
+void	G_DoQuickSave ();
 
 void STAT_Serialize(FSerializer &file);
 bool WriteZip(const char *filename, TArray<FString> &filenames, TArray<FCompressedBuffer> &content);
@@ -184,9 +184,13 @@ short			consistancy[MAXPLAYERS][BACKUPTICS];
  
 #define TURBOTHRESHOLD	12800
 
+EXTERN_CVAR (Int, turnspeedwalkfast)
+EXTERN_CVAR (Int, turnspeedsprintfast)
+EXTERN_CVAR (Int, turnspeedwalkslow)
+EXTERN_CVAR (Int, turnspeedsprintslow)
 
 int				forwardmove[2], sidemove[2];
-int		 		angleturn[4] = {640, 1280, 320, 320};		// + slow turn
+FIntCVar		*angleturn[4] = {&turnspeedwalkfast, &turnspeedsprintfast, &turnspeedwalkslow, &turnspeedsprintslow};
 int				flyspeed[2] = {1*256, 3*256};
 int				lookspeed[2] = {450, 512};
 
@@ -262,8 +266,12 @@ CCMD (turnspeeds)
 {
 	if (argv.argc() == 1)
 	{
-		Printf ("Current turn speeds: %d %d %d %d\n", angleturn[0],
-			angleturn[1], angleturn[2], angleturn[3]);
+		Printf ("Current turn speeds:\n"
+				TEXTCOLOR_BLUE " turnspeedwalkfast: " TEXTCOLOR_GREEN " %d\n"
+				TEXTCOLOR_BLUE " turnspeedsprintfast: " TEXTCOLOR_GREEN " %d\n"
+				TEXTCOLOR_BLUE " turnspeedwalkslow: " TEXTCOLOR_GREEN " %d\n"
+				TEXTCOLOR_BLUE " turnspeedsprintslow: " TEXTCOLOR_GREEN " %d\n", *turnspeedwalkfast,
+			*turnspeedsprintfast, *turnspeedwalkslow, *turnspeedsprintslow);
 	}
 	else
 	{
@@ -271,19 +279,19 @@ CCMD (turnspeeds)
 
 		for (i = 1; i <= 4 && i < argv.argc(); ++i)
 		{
-			angleturn[i-1] = atoi (argv[i]);
+			*angleturn[i-1] = atoi (argv[i]);
 		}
 		if (i <= 2)
 		{
-			angleturn[1] = angleturn[0] * 2;
+			*angleturn[1] = *angleturn[0] * 2;
 		}
 		if (i <= 3)
 		{
-			angleturn[2] = angleturn[0] / 2;
+			*angleturn[2] = *angleturn[0] / 2;
 		}
 		if (i <= 4)
 		{
-			angleturn[3] = angleturn[2];
+			*angleturn[3] = *angleturn[2];
 		}
 	}
 }
@@ -570,11 +578,11 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 		
 		if (Button_Right.bDown)
 		{
-			G_AddViewAngle (angleturn[tspeed]);
+			G_AddViewAngle (*angleturn[tspeed]);
 		}
 		if (Button_Left.bDown)
 		{
-			G_AddViewAngle (-angleturn[tspeed]);
+			G_AddViewAngle (-*angleturn[tspeed]);
 		}
 	}
 
@@ -1059,7 +1067,7 @@ void G_Ticker ()
 			G_DoLoadGame ();
 			break;
 		case ga_savegame:
-			G_DoSaveGame (true, savegamefile, savedescription);
+			G_DoSaveGame (true, false, savegamefile, savedescription);
 			gameaction = ga_nothing;
 			savegamefile = "";
 			savedescription = "";
@@ -2028,6 +2036,14 @@ CUSTOM_CVAR (Int, autosavecount, 4, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 	if (self < 0)
 		self = 0;
 }
+CVAR (Int, quicksavenum, -1, CVAR_NOSET|CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+static int lastquicksave = -1;
+CVAR (Bool, quicksaverotation, false, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+CUSTOM_CVAR (Int, quicksaverotationcount, 4, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
+{
+	if (self < 1)
+		self = 1;
+}
 
 void G_DoAutoSave ()
 {
@@ -2061,7 +2077,35 @@ void G_DoAutoSave ()
 
 	readableTime = myasctime ();
 	description.Format("Autosave %s", readableTime);
-	G_DoSaveGame (false, file, description);
+	G_DoSaveGame (false, false, file, description);
+}
+
+void G_DoQuickSave ()
+{
+	FString description;
+	FString file;
+	// Keeps a rotating set of quicksaves
+	UCVarValue num;
+	const char *readableTime;
+	int count = quicksaverotationcount != 0 ? quicksaverotationcount : 1;
+	
+	if (quicksavenum < 0) 
+	{
+		lastquicksave = 0;
+	}
+	else
+	{
+		lastquicksave = (quicksavenum + 1) % count;
+	}
+
+	num.Int = lastquicksave;
+	quicksavenum.ForceSet (num, CVAR_Int);
+
+	file = G_BuildSaveName ("quick", lastquicksave);
+
+	readableTime = myasctime ();
+	description.Format("Quicksave %s", readableTime);
+	G_DoSaveGame (true, true, file, description);
 }
 
 
@@ -2166,7 +2210,7 @@ static void PutSavePic (FileWriter *file, int width, int height)
 	}
 }
 
-void G_DoSaveGame (bool okForQuicksave, FString filename, const char *description)
+void G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, const char *description)
 {
 	TArray<FCompressedBuffer> savegame_content;
 	TArray<FString> savegame_filenames;
@@ -2282,7 +2326,7 @@ void G_DoSaveGame (bool okForQuicksave, FString filename, const char *descriptio
 
 	WriteZip(filename, savegame_filenames, savegame_content);
 
-	savegameManager.NotifyNewSave (filename, description, okForQuicksave);
+	savegameManager.NotifyNewSave (filename, description, okForQuicksave, forceQuicksave);
 
 	// delete the JSON buffers we created just above. Everything else will
 	// either still be needed or taken care of automatically.

@@ -71,7 +71,6 @@
 #include "d_netinf.h"
 #include "menu/menu.h"
 #include "a_sharedglobal.h"
-#include "r_renderer.h"
 #include "r_utility.h"
 #include "p_spec.h"
 #include "serializer.h"
@@ -99,6 +98,8 @@ EXTERN_CVAR (Float, sv_gravity)
 EXTERN_CVAR (Float, sv_aircontrol)
 EXTERN_CVAR (Int, disableautosave)
 EXTERN_CVAR (String, playerclass)
+
+extern uint8_t globalfreeze, globalchangefreeze;
 
 #define SNAP_ID			MAKE_ID('s','n','A','p')
 #define DSNP_ID			MAKE_ID('d','s','N','p')
@@ -471,6 +472,7 @@ void G_InitNew (const char *mapname, bool bTitleLevel)
 	UnlatchCVars ();
 	G_VerifySkill();
 	UnlatchCVars ();
+	globalfreeze = globalchangefreeze = 0;
 	for (auto Level : AllLevels())
 	{
 		Level->Thinkers.DestroyThinkersInList(STAT_STATIC);
@@ -744,10 +746,37 @@ void FLevelLocals::ExitLevel (int position, bool keepFacing)
 	ChangeLevel(NextMap, position, keepFacing ? CHANGELEVEL_KEEPFACING : 0);
 }
 
+static void LevelLocals_ExitLevel(FLevelLocals *self, int position, bool keepFacing)
+{
+	self->ExitLevel(position, keepFacing);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, ExitLevel, LevelLocals_ExitLevel)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(position);
+	PARAM_INT(keepFacing);
+	self->ExitLevel(position, keepFacing);
+	return 0;
+}
+
 void FLevelLocals::SecretExitLevel (int position)
 {
 	flags3 |= LEVEL3_EXITSECRETUSED;
 	ChangeLevel(GetSecretExitMap(), position, 0);
+}
+
+static void LevelLocals_SecretExitLevel(FLevelLocals *self, int position)
+{
+	self->SecretExitLevel(position);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FLevelLocals, SecretExitLevel, LevelLocals_SecretExitLevel)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FLevelLocals);
+	PARAM_INT(position);
+	self->SecretExitLevel(position);
+	return 0;
 }
 
 //==========================================================================
@@ -808,12 +837,13 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 
 	// [RH] Mark this level as having been visited
 	if (!(flags & LEVEL_CHANGEMAPCHEAT))
-		FindLevelInfo (MapName)->flags |= LEVEL_VISITED;
+		info->flags |= LEVEL_VISITED;
 	
 	uint32_t langtable[2] = {};
 	wminfo.finished_ep = cluster - 1;
 	wminfo.LName0 = TexMan.CheckForTexture(info->PName, ETextureType::MiscPatch);
 	wminfo.thisname = info->LookupLevelName(&langtable[0]);	// re-get the name so we have more info about its origin.
+	if (!wminfo.LName0.isValid() || !(info->flags3 & LEVEL3_HIDEAUTHORNAME)) wminfo.thisauthor = info->AuthorName;
 	wminfo.current = MapName;
 
 	if (deathmatch &&
@@ -823,6 +853,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 		wminfo.next = MapName;
 		wminfo.LName1 = wminfo.LName0;
 		wminfo.nextname = wminfo.thisname;
+		wminfo.nextauthor = wminfo.thisauthor;
 	}
 	else
 	{
@@ -832,12 +863,14 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 			wminfo.next = "";
 			wminfo.LName1.SetInvalid();
 			wminfo.nextname = "";
+			wminfo.nextauthor = "";
 		}
 		else
 		{
 			wminfo.next = nextinfo->MapName;
 			wminfo.LName1 = TexMan.CheckForTexture(nextinfo->PName, ETextureType::MiscPatch);
 			wminfo.nextname = nextinfo->LookupLevelName(&langtable[1]);
+			if (!wminfo.LName1.isValid() || !(nextinfo->flags3 & LEVEL3_HIDEAUTHORNAME)) wminfo.nextauthor = nextinfo->AuthorName;
 		}
 	}
 
@@ -855,7 +888,7 @@ bool FLevelLocals::DoCompleted (FString nextlevel, wbstartstruct_t &wminfo)
 				if (tex != nullptr)
 				{
 					int filenum = Wads.GetLumpFile(tex->GetSourceLump());
-					if (filenum >= 0 && filenum <= Wads.GetIwadNum())
+					if (filenum >= 0 && filenum <= Wads.GetMaxIwadNum())
 					{
 						texids[i]->SetInvalid();
 					}
@@ -1248,7 +1281,7 @@ void FLevelLocals::WorldDone (void)
 				ext->mDefined & FExitText::DEF_LOOKUP,
 				true, endsequence);
 		}
-		else
+		else if (!(info->flags2 & LEVEL2_NOCLUSTERTEXT))
 		{
 			F_StartFinale(thiscluster->MessageMusic, thiscluster->musicorder,
 				thiscluster->cdtrack, thiscluster->cdid,
@@ -1259,7 +1292,7 @@ void FLevelLocals::WorldDone (void)
 				true, endsequence);
 		}
 	}
-	else
+	else if (!deathmatch)
 	{
 		FExitText *ext = nullptr;
 		
@@ -1286,7 +1319,7 @@ void FLevelLocals::WorldDone (void)
 
 		nextcluster = FindClusterInfo (FindLevelInfo (nextlevel)->cluster);
 
-		if (nextcluster->cluster != cluster && !deathmatch)
+		if (nextcluster->cluster != cluster && !(info->flags2 & LEVEL2_NOCLUSTERTEXT))
 		{
 			// Only start the finale if the next level's cluster is different
 			// than the current one and we're not in deathmatch.
@@ -1555,6 +1588,7 @@ void FLevelLocals::Init()
 	flags2 = 0;
 	flags3 = 0;
 	ImpactDecalCount = 0;
+	frozenstate = 0;
 
 	info = FindLevelInfo (MapName);
 
@@ -1611,6 +1645,7 @@ void FLevelLocals::Init()
 	NextMap = info->NextMap;
 	NextSecretMap = info->NextSecretMap;
 	F1Pic = info->F1Pic;
+	AuthorName = info->AuthorName;
 	hazardcolor = info->hazardcolor;
 	hazardflash = info->hazardflash;
 	

@@ -43,7 +43,7 @@
 #include "a_keys.h"
 #include "p_enemy.h"
 #include "gstrings.h"
-#include "sound/i_music.h"
+#include "i_music.h"
 #include "p_setup.h"
 #include "d_net.h"
 #include "d_event.h"
@@ -70,6 +70,7 @@ static bool DrawConversationMenu ();
 static void PickConversationReply (int replyindex);
 static void TerminalResponse (const char *str);
 
+CVAR(Bool, dlg_vgafont, false, CVAR_ARCHIVE)
 
 //============================================================================
 //
