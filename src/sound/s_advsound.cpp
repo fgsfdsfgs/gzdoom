@@ -49,6 +49,7 @@
 #include "vm.h"
 #include "i_system.h"
 #include "atterm.h"
+#include "s_music.h"
 
 // MACROS ------------------------------------------------------------------
 
@@ -1948,13 +1949,12 @@ int S_FindSkinnedSound (AActor *actor, FSoundID refid)
 int S_FindSkinnedSoundEx (AActor *actor, const char *name, const char *extendedname)
 {
 	FString fullname;
-	FSoundID id;
 
 	// Look for "name-extendedname";
 	fullname = name;
 	fullname += '-';
 	fullname += extendedname;
-	id = fullname;
+	FSoundID id = fullname;
 
 	if (id == 0)
 	{ // Look for "name"

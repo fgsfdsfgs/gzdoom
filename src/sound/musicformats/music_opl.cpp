@@ -36,47 +36,34 @@
 
 static bool OPL_Active;
 
-CUSTOM_CVAR (Int, opl_numchips, 2, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
-{
-	if (*self <= 0)
-	{
-		self = 1;
-	}
-	else if (*self > MAXOPL2CHIPS)
-	{
-		self = MAXOPL2CHIPS;
-	}
-	else if (OPL_Active && currSong != NULL)
-	{
-		static_cast<OPLMUSSong *>(currSong)->ResetChips ();
-	}
-}
+EXTERN_CVAR (Int, opl_numchips)
+EXTERN_CVAR(Int, opl_core)
 
-CUSTOM_CVAR(Int, opl_core, 0, CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+int getOPLCore(const char* args)
 {
-	if (currSong != nullptr && currSong->GetDeviceType() == MDEV_OPL)
-	{
-		MIDIDeviceChanged(-1, true);
-	}
-}
-int current_opl_core;
-
-// Get OPL core override from $mididevice
-void OPL_SetCore(const char *args)
-{
-	current_opl_core = opl_core;
+	int current_opl_core = opl_core;
 	if (args != NULL && *args >= '0' && *args < '4') current_opl_core = *args - '0';
+	return current_opl_core;
 }
+
 
 OPLMUSSong::OPLMUSSong (FileReader &reader, const char *args)
 {
 	int samples = int(OPL_SAMPLE_RATE / 14);
+	const char* error;
 
-	OPL_SetCore(args);
-	Music = new OPLmusicFile (reader);
+	int core = getOPLCore(args);
+	auto data = reader.Read();
+	Music = new OPLmusicFile (data.Data(), data.Size(), core, opl_numchips, error);
+	if (!Music->IsValid())
+	{
+		Printf(PRINT_BOLD, "%s", error? error : "Invalid OPL format\n");
+		delete Music;
+		return;
+	}
 
 	m_Stream = GSnd->CreateStream (FillStream, samples*4,
-		(current_opl_core == 0 ? SoundStream::Mono : 0) | SoundStream::Float, int(OPL_SAMPLE_RATE), this);
+		(core == 0 ? SoundStream::Mono : 0) | SoundStream::Float, int(OPL_SAMPLE_RATE), this);
 	if (m_Stream == NULL)
 	{
 		Printf (PRINT_BOLD, "Could not create music stream.\n");
@@ -101,9 +88,10 @@ bool OPLMUSSong::IsValid () const
 	return m_Stream != NULL;
 }
 
-void OPLMUSSong::ResetChips ()
+void OPLMUSSong::ChangeSettingInt(const char * name, int val)
 {
-	Music->ResetChips ();
+	if (!strcmp(name, "opl.numchips"))
+		Music->ResetChips (val);
 }
 
 bool OPLMUSSong::IsPlaying ()
@@ -131,23 +119,3 @@ bool OPLMUSSong::FillStream (SoundStream *stream, void *buff, int len, void *use
 	return song->Music->ServiceStream (buff, len);
 }
 
-MusInfo *OPLMUSSong::GetOPLDumper(const char *filename)
-{
-	return new OPLMUSDumper(this, filename);
-}
-
-OPLMUSSong::OPLMUSSong(const OPLMUSSong *original, const char *filename)
-{
-	Music = new OPLmusicFile(original->Music, filename);
-	m_Stream = NULL;
-}
-
-OPLMUSDumper::OPLMUSDumper(const OPLMUSSong *original, const char *filename)
-: OPLMUSSong(original, filename)
-{
-}
-
-void OPLMUSDumper::Play(bool looping, int)
-{
-	Music->Dump();
-}

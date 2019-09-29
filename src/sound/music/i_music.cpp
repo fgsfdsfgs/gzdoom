@@ -47,6 +47,7 @@
 #include "stats.h"
 #include "timidity/timidity.h"
 #include "vm.h"
+#include "s_music.h"
 
 
 
@@ -157,10 +158,9 @@ void I_ShutdownMusic(bool onexit)
 		S_StopMusic (true);
 		assert (currSong == nullptr);
 	}
-	Timidity::FreeAll();
 	if (onexit)
 	{
-		WildMidi_Shutdown();
+		// free static data in the backends.
 		TimidityPP_Shutdown();
 		dumb_exit();
 	}
@@ -244,19 +244,15 @@ void MusInfo::GMEDepthChanged(float val)
 {
 }
 
-void MusInfo::FluidSettingInt(const char *, int)
+void MusInfo::ChangeSettingInt(const char *, int)
 {
 }
 
-void MusInfo::FluidSettingNum(const char *, double)
+void MusInfo::ChangeSettingNum(const char *, double)
 {
 }
 
-void MusInfo::FluidSettingStr(const char *, const char *)
-{
-}
-
-void MusInfo::WildMidiSetOption(int opt, int set)
+void MusInfo::ChangeSettingString(const char *, const char *)
 {
 }
 
@@ -449,6 +445,10 @@ MusInfo *I_RegisterSong (FileReader &reader, MidiDeviceSetting *device)
 		(id[0] == MAKE_ID('A','D','L','I') && *((uint8_t *)id + 4) == 'B'))		// Martin Fernandez's modified IMF
 	{
 		info = new OPLMUSSong (reader, device != nullptr? device->args.GetChars() : "");
+	}
+	else if ((id[0] == MAKE_ID('R', 'I', 'F', 'F') && id[2] == MAKE_ID('C', 'D', 'X', 'A')))
+	{
+		info = XA_OpenSong(reader);
 	}
 	// Check for game music
 	else if ((fmt = GME_CheckFormat(id[0])) != nullptr && fmt[0] != '\0')
@@ -688,39 +688,6 @@ static MIDISource *GetMIDISource(const char *fn)
 		return nullptr;
 	}
 	return source;
-}
-//==========================================================================
-//
-// CCMD writeopl
-//
-// If the current song can be played with OPL instruments, dump it to
-// the specified file on disk.
-//
-//==========================================================================
-
-UNSAFE_CCMD (writeopl)
-{
-	if (argv.argc() >= 3 && argv.argc() <= 7)
-	{
-		auto source = GetMIDISource(argv[1]);
-		if (source == nullptr) return;
-
-		// We must stop the currently playing music to avoid interference between two synths. 
-		auto savedsong = mus_playing;
-		S_StopMusic(true);
-		auto streamer = new MIDIStreamer(MDEV_OPL, nullptr);
-		streamer->SetMIDISource(source);
-		streamer->DumpOPL(argv[2], argv.argc() <4 ? 0 : (int)strtol(argv[3], nullptr, 10));
-		delete streamer;
-		S_ChangeMusic(savedsong.name, savedsong.baseorder, savedsong.loop, true);
-
-	}
-	else
-	{
-		Printf("Usage: writeopl <midi> <filename> [subsong]\n"
-			" - use '*' as song name to dump the currently playing song\n"
-			" - use 0 for subsong to play the default\n");
-	}
 }
 
 //==========================================================================

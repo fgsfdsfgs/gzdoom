@@ -37,28 +37,26 @@
 #include "i_musicinterns.h"
 #include "v_text.h"
 #include "doomerrors.h"
+#include "i_soundfont.h"
 
 #include "timiditypp/timidity.h"
 #include "timiditypp/instrum.h"
 #include "timiditypp/playmidi.h"
 
+
+
+
 class TimidityPPMIDIDevice : public SoftSynthMIDIDevice
 {
-	static TimidityPlus::Instruments *instruments;
-	int sampletime;
+	std::shared_ptr<TimidityPlus::Instruments> instruments;
 public:
-	TimidityPPMIDIDevice(const char *args, int samplerate);
+	TimidityPPMIDIDevice(TimidityConfig *config, int samplerate);
 	~TimidityPPMIDIDevice();
 
 	int Open(MidiCallback, void *userdata);
 	void PrecacheInstruments(const uint16_t *instruments, int count);
 	//FString GetStats();
 	int GetDeviceType() const override { return MDEV_TIMIDITY; }
-	static void ClearInstruments()
-	{
-		if (instruments != nullptr) delete instruments;
-		instruments = nullptr;
-	}
 
 	double test[3] = { 0, 0, 0 };
 
@@ -68,20 +66,37 @@ protected:
 	void HandleEvent(int status, int parm1, int parm2);
 	void HandleLongEvent(const uint8_t *data, int len);
 	void ComputeOutput(float *buffer, int len);
+	void LoadInstruments(TimidityConfig* config);
 };
-TimidityPlus::Instruments *TimidityPPMIDIDevice::instruments;
 
-// Config file to use
-CUSTOM_CVAR(String, timidity_config, "gzdoom", CVAR_ARCHIVE | CVAR_GLOBALCONFIG)
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+void TimidityPPMIDIDevice::LoadInstruments(TimidityConfig* config)
 {
-	if (currSong != nullptr && currSong->GetDeviceType() == MDEV_TIMIDITY)
+	if (config->reader)
 	{
-		MIDIDeviceChanged(-1, true);
+		config->loadedConfig = config->readerName;
+		config->instruments.reset(new TimidityPlus::Instruments());
+		bool success = config->instruments->load(config->reader);
+		config->reader = nullptr;
+
+		if (!success)
+		{
+			config->instruments.reset();
+			config->loadedConfig = "";
+			throw std::runtime_error("Unable to initialize instruments for Timidity++ MIDI device");
+		}
 	}
+	else if (config->instruments == nullptr)
+	{
+		throw std::runtime_error("No instruments set for Timidity++ device");
+	}
+	instruments = config->instruments;
 }
-
-
-CVAR (Int, timidity_frequency, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 //==========================================================================
 //
@@ -89,37 +104,12 @@ CVAR (Int, timidity_frequency, 0, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 //
 //==========================================================================
 
-TimidityPPMIDIDevice::TimidityPPMIDIDevice(const char *args, int samplerate) 
-	:SoftSynthMIDIDevice(samplerate <= 0? timidity_frequency : samplerate, 4000, 65000)
+TimidityPPMIDIDevice::TimidityPPMIDIDevice(TimidityConfig *config, int samplerate) 
+	:SoftSynthMIDIDevice(samplerate, 4000, 65000)
 {
-	if (args == NULL || *args == 0) args = timidity_config;
-
-	Renderer = nullptr;
-	if (instruments != nullptr && !instruments->checkConfig(args))
-	{
-		delete instruments;
-		instruments = nullptr;
-	}
 	TimidityPlus::set_playback_rate(SampleRate);
-
-	if (instruments == nullptr)
-	{
-		instruments = new TimidityPlus::Instruments;
-		if (!instruments->load(args))
-		{
-			delete instruments;
-			instruments = nullptr;
-		}
-	}
-	if (instruments != nullptr)
-	{
-		Renderer = new TimidityPlus::Player(instruments);
-	}
-	else
-	{
-		I_Error("Failed to load any MIDI patches");
-	}
-	sampletime = 0;
+	LoadInstruments(config);
+	Renderer = new TimidityPlus::Player(instruments.get());
 }
 
 //==========================================================================
@@ -150,8 +140,6 @@ int TimidityPPMIDIDevice::Open(MidiCallback callback, void *userdata)
 	{
 		Renderer->playmidi_stream_init();
 	}
-	// No instruments loaded means we cannot play...
-	if (instruments == nullptr) return 0;
 	return ret;
 }
 
@@ -214,41 +202,14 @@ void TimidityPPMIDIDevice::ComputeOutput(float *buffer, int len)
 //
 //==========================================================================
 
-MIDIDevice *CreateTimidityPPMIDIDevice(const char *args, int samplerate)
+MIDIDevice *CreateTimidityPPMIDIDevice(TimidityConfig* config, int samplerate)
 {
-	return new TimidityPPMIDIDevice(args, samplerate);
+	return new TimidityPPMIDIDevice(config, samplerate);
 }
+
 
 void TimidityPP_Shutdown()
 {
-	TimidityPPMIDIDevice::ClearInstruments();
 	TimidityPlus::free_gauss_table();
 	TimidityPlus::free_global_mblock();
-}
-
-
-void TimidityPlus::ctl_cmsg(int type, int verbosity_level, const char *fmt, ...)
-{
-	if (verbosity_level >= VERB_DEBUG) return;	// Don't waste time on diagnostics.
-
-	va_list args;
-	va_start(args, fmt);
-	FString msg;
-	msg.VFormat(fmt, args);
-	va_end(args);
-
-	switch (type)
-	{
-	case CMSG_ERROR:
-		Printf(TEXTCOLOR_RED "%s\n", msg.GetChars());
-		break;
-
-	case CMSG_WARNING:
-		Printf(TEXTCOLOR_YELLOW "%s\n", msg.GetChars());
-		break;
-
-	case CMSG_INFO:
-		DPrintf(DMSG_SPAMMY, "%s\n", msg.GetChars());
-		break;
-	}
 }

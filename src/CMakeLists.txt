@@ -353,7 +353,7 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	endif ()
 
 	if( NOT X64 AND NOT CAN_DO_MFPMATH )
-		set( CMAKE_C_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
+		set( CMAKE_C_FLAGS "-DNO_SSE ${CMAKE_C_FLAGS}" )
 		set( CMAKE_CXX_FLAGS "-DNO_SSE ${CMAKE_CXX_FLAGS}" )
 	endif()
 
@@ -468,7 +468,7 @@ set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_L
 if (HAVE_VULKAN)
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} "glslang" "SPIRV" "OGLCompiler")
 endif()
-include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" )
+include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" "${ADL_INCLUDE_DIR}" "${OPN_INCLUDE_DIR}" "${TIMIDITYPP_INCLUDE_DIR}" "${TIMIDITY_INCLUDE_DIR}" "${WILDMIDI_INCLUDE_DIR}" "${OPLSYNTH_INCLUDE_DIR}" )
 
 if( ${HAVE_VM_JIT} )
 	add_definitions( -DHAVE_VM_JIT )
@@ -657,13 +657,6 @@ if( NOT SEND_ANON_STATS )
 	add_definitions( -DNO_SEND_STATS )
 endif()
 
-# Disable ADLMIDI's and OPNMIDI's MIDI Sequencer
-add_definitions(-DADLMIDI_DISABLE_MIDI_SEQUENCER)
-add_definitions(-DOPNMIDI_DISABLE_MIDI_SEQUENCER)
-
-# Disable OPNMIDI's experimental yet emulator (using of it has some issues and missing notes in playback)
-add_definitions(-DOPNMIDI_DISABLE_GX_EMULATOR)
-
 # Project files should be aware of the header files. We can GLOB these since
 # there's generally a new cpp for every header so this file will get changed
 file( GLOB HEADER_FILES
@@ -685,12 +678,8 @@ file( GLOB HEADER_FILES
 	maploader/*.h
 	menu/*.h
 	sound/*.h
-	sound/adlmidi/*.h*
 	sound/backend/*.h*
 	sound/music/*.h*
-	sound/opnmidi/*.h*
-	sound/oplsynth/*.h
-	sound/oplsynth/dosbox/*.h
 	posix/*.h
 	posix/cocoa/*.h
 	posix/sdl/*.h
@@ -707,12 +696,7 @@ file( GLOB HEADER_FILES
 	scripting/zscript/*.h
 	scripting/vm/*.h
 	sound/midisources/*.h
-	sound/oplsynth/*.h
-	sound/oplsynth/dosbox/*.h
 	sound/thirdparty/*.h
-	sound/timidity/*.h
-	sound/timiditypp/*.h
-	sound/wildmidi/*.h
 	rendering/*.h
 	rendering/2d/*.h
 	rendering/swrenderer/*.h
@@ -858,13 +842,10 @@ set( FASTMATH_SOURCES
 	rendering/swrenderer/r_all.cpp
 	rendering/swrenderer/r_swscene.cpp
 	rendering/polyrenderer/poly_all.cpp
-	sound/oplsynth/opl_mus_player.cpp
 	sound/backend/mpg123_decoder.cpp
 	sound/music/music_midi_base.cpp
 	sound/backend/oalsound.cpp
 	sound/backend/sndfile_decoder.cpp
-	sound/timiditypp/fft4g.cpp
-	sound/timiditypp/reverb.cpp
 	gamedata/textures/hires/hqnx/init.cpp
 	gamedata/textures/hires/hqnx/hq2x.cpp
 	gamedata/textures/hires/hqnx/hq3x.cpp
@@ -892,32 +873,8 @@ set( FASTMATH_SOURCES
 	rendering/hwrenderer/scene/hw_walls_vertex.cpp
 	rendering/hwrenderer/scene/hw_weapon.cpp
 	r_data/models/models.cpp
-	r_data/matrix.cpp
-	sound/adlmidi/adldata.cpp
-	sound/adlmidi/adlmidi.cpp
-	sound/adlmidi/adlmidi_load.cpp
-	sound/adlmidi/adlmidi_midiplay.cpp
-	sound/adlmidi/adlmidi_opl3.cpp
-	sound/adlmidi/adlmidi_private.cpp
-	sound/adlmidi/chips/dosbox/dbopl.cpp
-	sound/adlmidi/chips/dosbox_opl3.cpp
-	sound/adlmidi/chips/nuked/nukedopl3_174.c
-	sound/adlmidi/chips/nuked/nukedopl3.c
-	sound/adlmidi/chips/nuked_opl3.cpp
-	sound/adlmidi/chips/nuked_opl3_v174.cpp
-	sound/adlmidi/wopl/wopl_file.c
-	sound/opnmidi/chips/gens_opn2.cpp
-	sound/opnmidi/chips/gens/Ym2612_Emu.cpp
-	sound/opnmidi/chips/mame/mame_ym2612fm.c
-	sound/opnmidi/chips/mame_opn2.cpp
-	sound/opnmidi/chips/nuked_opn2.cpp
-	sound/opnmidi/chips/nuked/ym3438.c
-	sound/opnmidi/opnmidi.cpp
-	sound/opnmidi/opnmidi_load.cpp
-	sound/opnmidi/opnmidi_midiplay.cpp
-	sound/opnmidi/opnmidi_opn2.cpp
-	sound/opnmidi/opnmidi_private.cpp
-	sound/opnmidi/wopn/wopn_file.c)
+	utility/matrix.cpp
+)
 	
 #Vulkan stuff must go into a separate list later because it needs to be disabled for some platforms
 set (VULKAN_SOURCES
@@ -1009,6 +966,7 @@ set (PCH_SOURCES
 	sound/s_environment.cpp
 	sound/s_sndseq.cpp
 	sound/s_sound.cpp
+	sound/s_music.cpp
 	serializer.cpp
 	scriptutil.cpp
 	st_stuff.cpp
@@ -1235,8 +1193,9 @@ set (PCH_SOURCES
 	sound/music/i_music.cpp
 	sound/music/i_soundfont.cpp
 	sound/backend/i_sound.cpp
+	sound/mididevices/midi_cvars.cpp
+	sound/mididevices/music_base_mididevice.cpp
 	sound/mididevices/music_adlmidi_mididevice.cpp
-	sound/mididevices/music_opldumper_mididevice.cpp
 	sound/mididevices/music_opl_mididevice.cpp
 	sound/mididevices/music_opnmidi_mididevice.cpp
 	sound/mididevices/music_timiditypp_mididevice.cpp
@@ -1257,49 +1216,12 @@ set (PCH_SOURCES
 	sound/musicformats/music_midistream.cpp
 	sound/musicformats/music_opl.cpp
 	sound/musicformats/music_stream.cpp
-	sound/oplsynth/fmopl.cpp
-	sound/oplsynth/musicblock.cpp
-	sound/oplsynth/oplio.cpp
-	sound/oplsynth/dosbox/opl.cpp
-	sound/oplsynth/OPL3.cpp
-	sound/oplsynth/nukedopl3.cpp
-	sound/timidity/common.cpp
-	sound/timidity/instrum.cpp
-	sound/timidity/instrum_dls.cpp
-	sound/timidity/instrum_font.cpp
-	sound/timidity/instrum_sf2.cpp
-	sound/timidity/mix.cpp
-	sound/timidity/playmidi.cpp
-	sound/timidity/resample.cpp
-	sound/timidity/timidity.cpp
-	sound/timiditypp/common.cpp
-	sound/timiditypp/configfile.cpp
-	sound/timiditypp/effect.cpp
-	sound/timiditypp/filter.cpp
-	sound/timiditypp/freq.cpp
-	sound/timiditypp/instrum.cpp
-	sound/timiditypp/mblock.cpp
-	sound/timiditypp/mix.cpp
-	sound/timiditypp/playmidi.cpp
-	sound/timiditypp/quantity.cpp
-	sound/timiditypp/readmidic.cpp
-	sound/timiditypp/recache.cpp
-	sound/timiditypp/resample.cpp
-	sound/timiditypp/sbkconv.cpp
-	sound/timiditypp/sffile.cpp
-	sound/timiditypp/sfitem.cpp
-	sound/timiditypp/smplfile.cpp
-	sound/timiditypp/sndfont.cpp
-	sound/timiditypp/tables.cpp
-	sound/wildmidi/file_io.cpp
-	sound/wildmidi/gus_pat.cpp
-	sound/wildmidi/reverb.cpp
-	sound/wildmidi/wildmidi_lib.cpp
-	sound/wildmidi/wm_error.cpp
+	sound/musicformats/music_xa.cpp
 	rendering/swrenderer/textures/r_swtexture.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	rendering/swrenderer/textures/swcanvastexture.cpp
 	events.cpp
+	utility/palette.cpp
 	utility/files.cpp
 	utility/files_decompress.cpp
 	utility/m_png.cpp
@@ -1316,7 +1238,6 @@ set (PCH_SOURCES
 	utility/stats.cpp
 	utility/atterm.cpp
 	utility/cmdlib.cpp
-	utility/colormatcher.cpp
 	utility/configfile.cpp
 	utility/i_module.cpp
 	utility/i_time.cpp
@@ -1336,7 +1257,12 @@ else()
 	set( NOT_COMPILED_SOURCE_FILES ${NOT_COMPILED_SOURCE_FILES} ${VM_JIT_SOURCES} )
 endif()
 
-enable_precompiled_headers( g_pch.h PCH_SOURCES )
+if( MSVC )
+	enable_precompiled_headers( g_pch.h PCH_SOURCES )
+else()
+	# Temporary solution for compilers other than MSVC
+	set_source_files_properties( ${PCH_SOURCES} PROPERTIES COMPILE_FLAGS "-include g_pch.h" )
+endif()
 
 add_executable( zdoom WIN32 MACOSX_BUNDLE
 	${HEADER_FILES}
@@ -1391,9 +1317,9 @@ if( SWITCH_LIBNX )
 	include_directories( ${CMAKE_SOURCE_DIR}/nx/gdtoa )
 	LIST( REMOVE_ITEM ZDOOM_LIBS dl )
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} vorbisfile vorbisenc vorbis ogg mpg123 flac opus EGL glapi drm_nouveau nx )
-	target_link_libraries( zdoom gdtoa dumb lzma ${ZDOOM_LIBS} )
+	target_link_libraries( zdoom gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth ${ZDOOM_LIBS} )
 else()
-	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma )
+	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth )
 endif()
 
 include_directories( .
@@ -1411,9 +1337,6 @@ include_directories( .
 	sound
 	sound/music
 	sound/backend
-	sound/oplsynth
-	sound/timidity
-	sound/wildmidi
 	xlat
 	utility
 	utility/nodebuilder
@@ -1512,7 +1435,8 @@ if( APPLE )
 
 	set_target_properties(zdoom PROPERTIES
 		LINK_FLAGS "${LINK_FRAMEWORKS}"
-		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist" )
+		MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/posix/osx/zdoom-info.plist"
+		XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "" )
 
 	# Dymanic libraries like libvulkan.dylib or libMoltenVK.dylib will be loaded by dlopen()
 	# if placed in the directory with the main executable
@@ -1530,13 +1454,6 @@ install(TARGETS zdoom
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
 source_group("Audio Files\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/backend/.+")
-source_group("Audio Files\\ADL MIDI" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/adlmidi/.+")
-source_group("Audio Files\\OPN MIDI" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/opnmidi/.+")
-source_group("Audio Files\\OPL Synth" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/oplsynth/.+")
-source_group("Audio Files\\OPL Synth\\DOSBox" FILES sound/oplsynth/dosbox/opl.cpp sound/oplsynth/dosbox/opl.h)
-source_group("Audio Files\\Timidity" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/timidity/.+")
-source_group("Audio Files\\Timiditypp" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/timiditypp/.+")
-source_group("Audio Files\\WildMidi" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/wildmidi/.+")
 source_group("Audio Files\\MIDI Devices" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/mididevices/.+")
 source_group("Audio Files\\MIDI Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/midisources/.+")
 source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")

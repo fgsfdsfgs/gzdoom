@@ -1,5 +1,8 @@
 
 #include <mutex>
+#include <string>
+#include <memory>
+
 #include "oplsynth/opl_mus_player.h"
 #include "c_cvars.h"
 #include "mus2midi.h"
@@ -26,29 +29,133 @@ struct MidiHeader
 	MidiHeader *lpNext;
 };
 
-// These constants must match the corresponding values of the Windows headers
-// to avoid readjustment in the native Windows device's playback functions 
-// and should not be changed.
-enum
+struct ADLConfig
 {
-	MIDIDEV_MIDIPORT = 1,
-	MIDIDEV_SYNTH,
-	MIDIDEV_SQSYNTH,
-	MIDIDEV_FMSYNTH,
-	MIDIDEV_MAPPER,
-	MIDIDEV_WAVETABLE,
-	MIDIDEV_SWSYNTH
+	int adl_chips_count = 6;
+	int adl_emulator_id = 0;
+	int adl_bank = 14;
+	int adl_volume_model = 3; // DMX
+	bool adl_run_at_pcm_rate = 0;
+	bool adl_fullpan = 1;
+	std::string adl_custom_bank;
 };
 
-enum : uint8_t
+extern ADLConfig adlConfig;
+
+struct FluidConfig
 {
-	MEVENT_TEMPO		= 1,
-	MEVENT_NOP			= 2,
-	MEVENT_LONGMSG		= 128,
+	std::string fluid_lib;
+	std::vector<std::string> fluid_patchset;
+	bool fluid_reverb = false;
+	bool fluid_chorus = false;
+	int fluid_voices = 128;
+	int fluid_interp = 1;
+	int fluid_samplerate = 0;
+	int fluid_threads = 1;
+	int fluid_chorus_voices = 3;
+	int fluid_chorus_type = 0;
+	float fluid_gain = 0.5f;
+	float fluid_reverb_roomsize = 0.61f;
+	float fluid_reverb_damping = 0.23f;
+	float fluid_reverb_width = 0.76f;
+	float fluid_reverb_level = 0.57f;
+	float fluid_chorus_level = 1.2f;
+	float fluid_chorus_speed = 0.3f;
+	float fluid_chorus_depth = 8;
 };
 
-#define MEVENT_EVENTTYPE(x)	((uint8_t)((x) >> 24))
-#define MEVENT_EVENTPARM(x)   ((x) & 0xffffff)
+extern FluidConfig fluidConfig;
+
+struct OPLMidiConfig
+{
+	int numchips = 2;
+	int core = 0;
+	bool fullpan = true;
+	struct GenMidiInstrument OPLinstruments[GENMIDI_NUM_TOTAL];
+};
+
+extern OPLMidiConfig oplMidiConfig;
+
+struct OpnConfig
+{
+	int opn_chips_count = 8;
+	int opn_emulator_id = 0;
+	bool opn_run_at_pcm_rate = false;
+	bool opn_fullpan = 1;
+	std::string opn_custom_bank;
+	std::vector<uint8_t> default_bank;
+};
+
+extern OpnConfig opnConfig;
+
+namespace Timidity
+{
+	class Instruments;
+	class SoundFontReaderInterface;
+}
+
+struct GUSConfig
+{
+	// This one is a bit more complex because it also implements the instrument cache.
+	int midi_voices = 32;
+	int gus_memsize = 0;
+	void (*errorfunc)(int type, int verbosity_level, const char* fmt, ...) = nullptr;
+
+	Timidity::SoundFontReaderInterface *reader;
+	std::string readerName;
+	std::vector<uint8_t> dmxgus;				// can contain the contents of a DMXGUS lump that may be used as the instrument set. In this case gus_patchdir must point to the location of the GUS data.
+	std::string gus_patchdir;
+	
+	// These next two fields are for caching the instruments for repeated use. The GUS device will work without them being cached in the config but it'd require reloading the instruments each time.
+	// Thus, this config should always be stored globally to avoid this.
+	// If the last loaded instrument set is to be reused or the caller wants to manage them itself, both 'reader' and 'dmxgus' fields should be left empty.
+	std::string loadedConfig;
+	std::shared_ptr<Timidity::Instruments> instruments;	// this is held both by the config and the device
+};
+
+extern GUSConfig gusConfig;
+
+namespace TimidityPlus
+{
+	class Instruments;
+	class SoundFontReaderInterface;
+}
+
+struct TimidityConfig
+{
+	void (*errorfunc)(int type, int verbosity_level, const char* fmt, ...) = nullptr;
+
+	TimidityPlus::SoundFontReaderInterface* reader;
+	std::string readerName;
+
+	// These next two fields are for caching the instruments for repeated use. The GUS device will work without them being cached in the config but it'd require reloading the instruments each time.
+	// Thus, this config should always be stored globally to avoid this.
+	// If the last loaded instrument set is to be reused or the caller wants to manage them itself, 'reader' should be left empty.
+	std::string loadedConfig;
+	std::shared_ptr<TimidityPlus::Instruments> instruments;	// this is held both by the config and the device
+
+};
+
+extern TimidityConfig timidityConfig;
+
+struct WildMidiConfig
+{
+	bool reverb = false;
+	bool enhanced_resampling = true;
+	void (*errorfunc)(const char* wmfmt, va_list args) = nullptr;
+
+	WildMidi::SoundFontReaderInterface* reader;
+	std::string readerName;
+
+	// These next two fields are for caching the instruments for repeated use. The GUS device will work without them being cached in the config but it'd require reloading the instruments each time.
+	// Thus, this config should always be stored globally to avoid this.
+	// If the last loaded instrument set is to be reused or the caller wants to manage them itself, 'reader' should be left empty.
+	std::string loadedConfig;
+	std::shared_ptr<WildMidi::Instruments> instruments;	// this is held both by the config and the device
+
+};
+
+extern WildMidiConfig wildMidiConfig;
 
 class MIDIStreamer;
 
@@ -56,7 +163,7 @@ typedef void(*MidiCallback)(void *);
 class MIDIDevice
 {
 public:
-	MIDIDevice();
+	MIDIDevice() = default;
 	virtual ~MIDIDevice();
 
 	virtual int Open(MidiCallback, void *userdata) = 0;
@@ -76,10 +183,9 @@ public:
 	virtual void InitPlayback();
 	virtual bool Update();
 	virtual void PrecacheInstruments(const uint16_t *instruments, int count);
-	virtual void FluidSettingInt(const char *setting, int value);
-	virtual void FluidSettingNum(const char *setting, double value);
-	virtual void FluidSettingStr(const char *setting, const char *value);
-	virtual void WildMidiSetOption(int opt, int set);
+	virtual void ChangeSettingInt(const char *setting, int value);
+	virtual void ChangeSettingNum(const char *setting, double value);
+	virtual void ChangeSettingString(const char *setting, const char *value);
 	virtual bool Preprocess(MIDIStreamer *song, bool looping);
 	virtual FString GetStats();
 	virtual int GetDeviceType() const { return MDEV_DEFAULT; }
@@ -89,6 +195,7 @@ public:
 
 
 void TimidityPP_Shutdown();
+
 
 // Base class for software synthesizer MIDI output devices ------------------
 
@@ -137,37 +244,6 @@ protected:
 	virtual void ComputeOutput(float *buffer, int len) = 0;
 };
 
-// OPL implementation of a MIDI output device -------------------------------
-
-class OPLMIDIDevice : public SoftSynthMIDIDevice, protected OPLmusicBlock
-{
-public:
-	OPLMIDIDevice(const char *args);
-	int Open(MidiCallback, void *userdata);
-	void Close();
-	int GetTechnology() const;
-	FString GetStats();
-
-protected:
-	void CalcTickRate();
-	int PlayTick();
-	void HandleEvent(int status, int parm1, int parm2);
-	void HandleLongEvent(const uint8_t *data, int len);
-	void ComputeOutput(float *buffer, int len);
-	bool ServiceStream(void *buff, int numbytes);
-	int GetDeviceType() const override { return MDEV_OPL; }
-};
-
-// OPL dumper implementation of a MIDI output device ------------------------
-
-class OPLDumperMIDIDevice : public OPLMIDIDevice
-{
-public:
-	OPLDumperMIDIDevice(const char *filename);
-	~OPLDumperMIDIDevice();
-	int Resume();
-	void Stop();
-};
 
 // Internal disk writing version of a MIDI device ------------------
 
@@ -202,11 +278,6 @@ protected:
 
 // Base class for streaming MUS and MIDI files ------------------------------
 
-enum
-{
-	MAX_MIDI_EVENTS = 128
-};
-
 class MIDIStreamer : public MusInfo
 {
 public:
@@ -224,10 +295,9 @@ public:
 	bool SetSubsong(int subsong) override;
 	void Update() override;
 	FString GetStats() override;
-	void FluidSettingInt(const char *setting, int value) override;
-	void FluidSettingNum(const char *setting, double value) override;
-	void FluidSettingStr(const char *setting, const char *value) override;
-	void WildMidiSetOption(int opt, int set) override;
+	void ChangeSettingInt(const char *setting, int value) override;
+	void ChangeSettingNum(const char *setting, double value) override;
+	void ChangeSettingString(const char *setting, const char *value) override;
 	int ServiceEvent();
 	void SetMIDISource(MIDISource *_source);
 
@@ -239,7 +309,6 @@ public:
 	}
 
 	bool DumpWave(const char *filename, int subsong, int samplerate);
-	bool DumpOPL(const char *filename, int subsong);
 
 
 protected:
@@ -321,22 +390,13 @@ public:
 	void Play (bool looping, int subsong);
 	bool IsPlaying ();
 	bool IsValid () const;
-	void ResetChips ();
-	MusInfo *GetOPLDumper(const char *filename);
+	void ChangeSettingInt (const char *, int) override;
 
 protected:
-	OPLMUSSong(const OPLMUSSong *original, const char *filename);	// OPL dump constructor
 
 	static bool FillStream (SoundStream *stream, void *buff, int len, void *userdata);
 
 	OPLmusicFile *Music;
-};
-
-class OPLMUSDumper : public OPLMUSSong
-{
-public:
-	OPLMUSDumper(const OPLMUSSong *original, const char *filename);
-	void Play(bool looping, int);
 };
 
 // CD track/disk played through the multimedia system -----------------------
@@ -368,6 +428,30 @@ public:
 	CDDAFile (FileReader &reader);
 };
 
+// MIDI devices
+
+MIDIDevice *CreateFluidSynthMIDIDevice(int samplerate, const FluidConfig* config, int (*printfunc)(const char*, ...));
+MIDIDevice *CreateADLMIDIDevice(const ADLConfig* config);
+MIDIDevice *CreateOPNMIDIDevice(const OpnConfig *args);
+MIDIDevice *CreateOplMIDIDevice(const OPLMidiConfig* config);
+MIDIDevice *CreateTimidityMIDIDevice(GUSConfig *config, int samplerate);
+MIDIDevice *CreateTimidityPPMIDIDevice(TimidityConfig *config, int samplerate);
+MIDIDevice *CreateWildMIDIDevice(WildMidiConfig *config, int samplerate);
+
+#ifdef _WIN32
+MIDIDevice* CreateWinMIDIDevice(int mididevice);
+#endif
+
+// Data interface
+
+void Fluid_SetupConfig(FluidConfig *config, const char* patches, bool systemfallback);
+void ADL_SetupConfig(ADLConfig *config, const char *Args);
+void OPL_SetupConfig(OPLMidiConfig *config, const char *args);
+void OPN_SetupConfig(OpnConfig *config, const char *Args);
+bool GUS_SetupConfig(GUSConfig *config, const char *args);
+bool Timidity_SetupConfig(TimidityConfig* config, const char* args);
+bool WildMidi_SetupConfig(WildMidiConfig* config, const char* args);
+
 // Module played via foo_dumb -----------------------------------------------
 
 MusInfo *MOD_OpenSong(FileReader &reader);
@@ -377,6 +461,7 @@ MusInfo *MOD_OpenSong(FileReader &reader);
 const char *GME_CheckFormat(uint32_t header);
 MusInfo *GME_OpenSong(FileReader &reader, const char *fmt);
 MusInfo *SndFile_OpenSong(FileReader &fr);
+MusInfo* XA_OpenSong(FileReader& reader);
 
 // --------------------------------------------------------------------------
 

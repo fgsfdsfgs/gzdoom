@@ -35,12 +35,52 @@
 #include <ctype.h>
 #include <assert.h>
 #include "i_soundfont.h"
+#include "i_soundinternal.h"
 #include "cmdlib.h"
 #include "i_system.h"
 #include "gameconfigfile.h"
 #include "resourcefiles/resourcefile.h"
+#include "timiditypp/common.h"
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
 
 FSoundFontManager sfmanager;
+
+template<class base>
+struct file_interface : public base
+{
+	FileReader fr;
+
+	char* gets(char* buff, int n) override
+	{
+		if (!fr.isOpen()) return nullptr;
+		return fr.Gets(buff, n);
+	}
+	long read(void* buff, int32_t size, int32_t nitems) override
+	{
+		if (!fr.isOpen()) return 0;
+		return (long)fr.Read(buff, size * nitems) / size;
+	}
+	long seek(long offset, int whence) override
+	{
+		if (!fr.isOpen()) return 0;
+		return (long)fr.Seek(offset, (FileReader::ESeek)whence);
+	}
+	long tell() override
+	{
+		if (!fr.isOpen()) return 0;
+		return (long)fr.Tell();
+	}
+	void close()
+	{
+		delete this;
+	}
+
+};
 
 //==========================================================================
 //
@@ -95,6 +135,72 @@ void FSoundFontReader::AddPath(const char *strp)
 int FSoundFontReader::pathcmp(const char *p1, const char *p2)
 {
 	return mCaseSensitivePaths? strcmp(p1, p2) : stricmp(p1, p2);
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+FileReader FSoundFontReader::Open(const char *name, std::string& filename)
+{
+	FileReader fr;
+	if (name == nullptr)
+	{
+		fr = OpenMainConfigFile();
+		filename = MainConfigFileName();
+	}
+	else
+	{
+		auto res = LookupFile(name);
+		fr = std::move(res.first);
+		filename = res.second;
+	}
+	return fr;
+}
+
+//==========================================================================
+//
+//
+//
+//==========================================================================
+
+template<class interface>
+interface* FSoundFontReader::open_interface(const char* name)
+{
+	std::string filename;
+	
+	FileReader fr = Open(name, filename);
+	if (!fr.isOpen()) return nullptr;
+	
+	auto tf = new file_interface<interface>;
+	tf->fr = std::move(fr);
+	tf->filename = std::move(filename);
+	return tf;
+}
+
+
+//==========================================================================
+//
+// The file interfaces for the different MIDI renderers
+// They are all the same except for the class names.
+//
+//==========================================================================
+
+struct TimidityPlus::timidity_file* FSoundFontReader::open_timidityplus_file(const char* name)
+{
+	return open_interface<TimidityPlus::timidity_file>(name);
+}
+
+struct Timidity::timidity_file* FSoundFontReader::open_timidity_file(const char* name)
+{
+	return open_interface<Timidity::timidity_file>(name);
+}
+
+struct WildMidi::wildmidi_file* FSoundFontReader::open_wildmidi_file(const char* name)
+{
+	return open_interface<WildMidi::wildmidi_file>(name);
 }
 
 //==========================================================================
@@ -217,14 +323,16 @@ FPatchSetReader::FPatchSetReader(const char *filename)
 	}
 }
 
-FPatchSetReader::FPatchSetReader()
+FPatchSetReader::FPatchSetReader(FileReader &reader)
 {
 	// This constructor is for reading DMXGUS
 	mAllowAbsolutePaths = true;
+	dmxgus = std::move(reader);
 }
 
 FileReader FPatchSetReader::OpenMainConfigFile()
 {
+	if (dmxgus.isOpen()) return std::move(dmxgus);
 	FileReader fr;
 	fr.OpenFile(mFullPathToConfig);
 	return fr;

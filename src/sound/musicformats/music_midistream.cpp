@@ -47,15 +47,6 @@
 
 // EXTERNAL FUNCTION PROTOTYPES --------------------------------------------
 
-#ifdef _WIN32
-MIDIDevice *CreateWinMIDIDevice(int mididevice);
-#endif
-MIDIDevice *CreateFluidSynthMIDIDevice(const char *args, int samplerate);
-MIDIDevice *CreateTimidityMIDIDevice(const char *args, int samplerate);
-MIDIDevice *CreateTimidityPPMIDIDevice(const char *args, int samplerate);
-MIDIDevice *CreateADLMIDIDevice(const char *args);
-MIDIDevice *CreateOPNMIDIDevice(const char *args);
-MIDIDevice *CreateWildMIDIDevice(const char *args, int samplerate);
 
 // PUBLIC FUNCTION PROTOTYPES ----------------------------------------------
 
@@ -207,15 +198,18 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
 			switch (devtype)
 			{
 			case MDEV_GUS:
-				dev = CreateTimidityMIDIDevice(Args, samplerate);
+				GUS_SetupConfig(&gusConfig, Args);
+				dev = CreateTimidityMIDIDevice(&gusConfig, samplerate);
 				break;
 
 			case MDEV_ADL:
-				dev = CreateADLMIDIDevice(Args);
+				ADL_SetupConfig(&adlConfig, Args);
+				dev = CreateADLMIDIDevice(&adlConfig);
 				break;
 
 			case MDEV_OPN:
-				dev = CreateOPNMIDIDevice(Args);
+				OPN_SetupConfig(&opnConfig, Args);
+				dev = CreateOPNMIDIDevice(&opnConfig);
 				break;
 
 			case MDEV_MMAPI:
@@ -227,28 +221,32 @@ MIDIDevice *MIDIStreamer::CreateMIDIDevice(EMidiDevice devtype, int samplerate)
 				// Intentional fall-through for non-Windows systems.
 
 			case MDEV_FLUIDSYNTH:
-				dev = CreateFluidSynthMIDIDevice(Args, samplerate);
+				Fluid_SetupConfig(&fluidConfig, Args, true);
+				dev = CreateFluidSynthMIDIDevice(samplerate, &fluidConfig, Printf);
 				break;
 
 			case MDEV_OPL:
-				dev = new OPLMIDIDevice(Args);
+				OPL_SetupConfig(&oplMidiConfig, Args);
+				dev = CreateOplMIDIDevice(&oplMidiConfig);
 				break;
 
 			case MDEV_TIMIDITY:
-				dev = CreateTimidityPPMIDIDevice(Args, samplerate);
+				Timidity_SetupConfig(&timidityConfig, Args);
+				dev = CreateTimidityPPMIDIDevice(&timidityConfig, samplerate);
 				break;
 
 			case MDEV_WILDMIDI:
-				dev = CreateWildMIDIDevice(Args, samplerate);
+				WildMidi_SetupConfig(&wildMidiConfig, Args);
+				dev = CreateWildMIDIDevice(&wildMidiConfig, samplerate);
 				break;
 
 			default:
 				break;
 			}
 		}
-		catch (CRecoverableError &err)
+		catch (std::runtime_error &err)
 		{
-			DPrintf(DMSG_WARNING, "%s\n", err.GetMessage());
+			DPrintf(DMSG_WARNING, "%s\n", err.what());
 			checked[devtype] = true;
 			devtype = MDEV_DEFAULT;
 			// Opening the requested device did not work out so choose another one.
@@ -303,25 +301,8 @@ void MIDIStreamer::Play(bool looping, int subsong)
 	m_Looping = looping;
 	source->SetMIDISubsong(subsong);
 	devtype = SelectMIDIDevice(DeviceType);
-	MIDI = CreateMIDIDevice(devtype, 0);
+	MIDI = CreateMIDIDevice(devtype, (int)GSnd->GetOutputRate());
 	InitPlayback();
-}
-
-//==========================================================================
-//
-// MIDIStreamer :: DumpWave
-//
-//==========================================================================
-
-bool MIDIStreamer::DumpOPL(const char *filename, int subsong)
-{
-	m_Looping = false;
-	if (source == nullptr) return false;	// We have nothing to play so abort.
-	source->SetMIDISubsong(subsong);
-
-	assert(MIDI == NULL);
-	MIDI = new OPLDumperMIDIDevice(filename);
-	return InitPlayback();
 }
 
 //==========================================================================
@@ -572,58 +553,43 @@ void MIDIStreamer::MusicVolumeChanged()
 
 //==========================================================================
 //
-// MIDIStreamer :: FluidSettingInt
+// MIDIStreamer :: ChangeSettingInt
 //
 //==========================================================================
 
-void MIDIStreamer::FluidSettingInt(const char *setting, int value)
+void MIDIStreamer::ChangeSettingInt(const char *setting, int value)
 {
 	if (MIDI != NULL)
 	{
-		MIDI->FluidSettingInt(setting, value);
+		MIDI->ChangeSettingInt(setting, value);
 	}
 }
 
 //==========================================================================
 //
-// MIDIStreamer :: FluidSettingNum
+// MIDIStreamer :: ChangeSettingNum
 //
 //==========================================================================
 
-void MIDIStreamer::FluidSettingNum(const char *setting, double value)
+void MIDIStreamer::ChangeSettingNum(const char *setting, double value)
 {
 	if (MIDI != NULL)
 	{
-		MIDI->FluidSettingNum(setting, value);
+		MIDI->ChangeSettingNum(setting, value);
 	}
 }
 
 //==========================================================================
 //
-// MIDIDeviceStreamer :: FluidSettingStr
+// MIDIDeviceStreamer :: ChangeSettingString
 //
 //==========================================================================
 
-void MIDIStreamer::FluidSettingStr(const char *setting, const char *value)
+void MIDIStreamer::ChangeSettingString(const char *setting, const char *value)
 {
 	if (MIDI != NULL)
 	{
-		MIDI->FluidSettingStr(setting, value);
-	}
-}
-
-
-//==========================================================================
-//
-// MIDIDeviceStreamer :: WildMidiSetOption
-//
-//==========================================================================
-
-void MIDIStreamer::WildMidiSetOption(int opt, int set)
-{
-	if (MIDI != NULL)
-	{
-		MIDI->WildMidiSetOption(opt, set);
+		MIDI->ChangeSettingString(setting, value);
 	}
 }
 
@@ -947,163 +913,3 @@ bool MIDIStreamer::SetSubsong(int subsong)
 }
 
 
-//==========================================================================
-//
-// MIDIDevice stubs.
-//
-//==========================================================================
-
-MIDIDevice::MIDIDevice()
-{
-}
-
-MIDIDevice::~MIDIDevice()
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: PrecacheInstruments
-//
-// The MIDIStreamer calls this method between device open and the first
-// buffered stream with a list of instruments known to be used by the song.
-// If the device can benefit from preloading the instruments, it can do so
-// now.
-//
-// Each entry is packed as follows:
-//   Bits 0- 6: Instrument number
-//   Bits 7-13: Bank number
-//   Bit    14: Select drum set if 1, tone bank if 0
-//
-//==========================================================================
-
-void MIDIDevice::PrecacheInstruments(const uint16_t *instruments, int count)
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: Preprocess
-//
-// Gives the MIDI device a chance to do some processing with the song before
-// it starts playing it. Returns true if MIDIStreamer should perform its
-// standard playback startup sequence.
-//
-//==========================================================================
-
-bool MIDIDevice::Preprocess(MIDIStreamer *song, bool looping)
-{
-	return true;
-}
-
-//==========================================================================
-//
-// MIDIDevice :: PrepareHeader
-//
-// Wrapper for MCI's midiOutPrepareHeader.
-//
-//==========================================================================
-
-int MIDIDevice::PrepareHeader(MidiHeader *header)
-{
-	return 0;
-}
-
-//==========================================================================
-//
-// MIDIDevice :: UnprepareHeader
-//
-// Wrapper for MCI's midiOutUnprepareHeader.
-//
-//==========================================================================
-
-int MIDIDevice::UnprepareHeader(MidiHeader *header)
-{
-	return 0;
-}
-
-//==========================================================================
-//
-// MIDIDevice :: FakeVolume
-//
-// Since most implementations render as a normal stream, their volume is
-// controlled through the GSnd interface, not here.
-//
-//==========================================================================
-
-bool MIDIDevice::FakeVolume()
-{
-	return false;
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-void MIDIDevice::InitPlayback()
-{
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-bool MIDIDevice::Update()
-{
-	return true;
-}
-
-//==========================================================================
-//
-// MIDIDevice :: FluidSettingInt
-//
-//==========================================================================
-
-void MIDIDevice::FluidSettingInt(const char *setting, int value)
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: FluidSettingNum
-//
-//==========================================================================
-
-void MIDIDevice::FluidSettingNum(const char *setting, double value)
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: FluidSettingStr
-//
-//==========================================================================
-
-void MIDIDevice::FluidSettingStr(const char *setting, const char *value)
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: WildMidiSetOption
-//
-//==========================================================================
-
-void MIDIDevice::WildMidiSetOption(int opt, int set)
-{
-}
-
-//==========================================================================
-//
-// MIDIDevice :: GetStats
-//
-//==========================================================================
-
-FString MIDIDevice::GetStats()
-{
-	return "This MIDI device does not have any stats.";
-}

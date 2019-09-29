@@ -64,6 +64,7 @@
 #include "g_levellocals.h"
 #include "vm.h"
 #include "utf8.h"
+#include "s_music.h"
 
 
 #include "gi.h"
@@ -1269,6 +1270,7 @@ void C_FullConsole ()
 		gamestate = GS_FULLCONSOLE;
 		primaryLevel->Music = "";
 		S_Start ();
+		S_StartMusic();
 		P_FreeLevelData ();
 	}
 	else
@@ -1764,7 +1766,7 @@ void C_MidPrint (FFont *font, const char *msg, bool bold)
 	IFVIRTUALPTR(StatusBar, DBaseStatusBar, ProcessMidPrint)
 	{
 		FString msgstr = msg;
-		VMValue params[] = { (DObject*)StatusBar, font, &msg, bold };
+		VMValue params[] = { (DObject*)StatusBar, font, &msgstr, bold };
 		int rv;
 		VMReturn ret(&rv);
 		VMCall(func, params, countof(params), &ret, 1);
@@ -1813,10 +1815,7 @@ struct TabData
 	{
 	}
 
-	TabData(const TabData &other)
-	: UseCount(other.UseCount), TabName(other.TabName)
-	{
-	}
+	TabData(const TabData &other) = default;
 };
 
 static TArray<TabData> TabCommands (TArray<TabData>::NoInit);
