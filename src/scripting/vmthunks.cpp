@@ -46,7 +46,6 @@
 #include "a_weapons.h"
 #include "d_player.h"
 #include "p_setup.h"
-#include "i_music.h"
 #include "am_map.h"
 #include "v_video.h"
 #include "gi.h"
@@ -652,6 +651,24 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, SetAdditiveColor, SetAdditiveColor)
 	SetAdditiveColor(self, pos, color);
 	return 0;
 }
+
+static void SetColorization(sector_t* self, int pos, int cname)
+{
+	if (pos >= 0 && pos < 2)
+	{
+		self->SetTextureFx(pos, TexMan.GetTextureManipulation(ENamedName(cname)));
+	}
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(_Sector, SetColorization, SetColorization)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(sector_t);
+	PARAM_INT(pos);
+	PARAM_INT(color);
+	SetColorization(self, pos, color);
+	return 0;
+}
+
 
 static void SetFogDensity(sector_t *self, int dens)
 {
@@ -1750,6 +1767,25 @@ DEFINE_ACTION_FUNCTION_NATIVE(_Sector, SetXOffset, SetXOffset)
 	 return 0;
  }
 
+ static void SetWallColorization(side_t* self, int pos, int cname)
+ {
+	 if (pos >= 0 && pos < 2)
+	 {
+		 self->SetTextureFx(pos, TexMan.GetTextureManipulation(ENamedName(cname)));
+	 }
+ }
+
+ DEFINE_ACTION_FUNCTION_NATIVE(_Side, SetColorization, SetWallColorization)
+ {
+	 PARAM_SELF_STRUCT_PROLOGUE(side_t);
+	 PARAM_INT(pos);
+	 PARAM_INT(color);
+	 SetWallColorization(self, pos, color);
+	 return 0;
+ }
+
+
+
  static int SideIndex(side_t *self)
  {
 	 return self->Index();
@@ -2542,7 +2578,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawImage, SBar_DrawImage)
 	return 0;
 }
 
-void SBar_DrawString(DBaseStatusBar *self, DHUDFont *font, const FString &string, double x, double y, int flags, int trans, double alpha, int wrapwidth, int linespacing);
+void SBar_DrawString(DBaseStatusBar *self, DHUDFont *font, const FString &string, double x, double y, int flags, int trans, double alpha, int wrapwidth, int linespacing, double scaleX, double scaleY);
 
 DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawString, SBar_DrawString)
 {
@@ -2556,7 +2592,9 @@ DEFINE_ACTION_FUNCTION_NATIVE(DBaseStatusBar, DrawString, SBar_DrawString)
 	PARAM_FLOAT(alpha);
 	PARAM_INT(wrapwidth);
 	PARAM_INT(linespacing);
-	SBar_DrawString(self, font, string, x, y, flags, trans, alpha, wrapwidth, linespacing);
+	PARAM_FLOAT(scaleX);
+	PARAM_FLOAT(scaleY);
+	SBar_DrawString(self, font, string, x, y, flags, trans, alpha, wrapwidth, linespacing, scaleX, scaleY);
 	return 0;
 }
 
@@ -3150,6 +3188,7 @@ DEFINE_FIELD(FLevelLocals, fogdensity)
 DEFINE_FIELD(FLevelLocals, outsidefogdensity)
 DEFINE_FIELD(FLevelLocals, skyfog)
 DEFINE_FIELD(FLevelLocals, pixelstretch)
+DEFINE_FIELD(FLevelLocals, MusicVolume)
 DEFINE_FIELD(FLevelLocals, deathsequence)
 DEFINE_FIELD_BIT(FLevelLocals, frozenstate, frozen, 1)	// still needed for backwards compatibility.
 DEFINE_FIELD_NAMED(FLevelLocals, i_compatflags, compatflags)

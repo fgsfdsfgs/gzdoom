@@ -23,11 +23,6 @@ if( ZD_CMAKE_COMPILER_IS_GNUCXX_COMPATIBLE )
 	endif()
 endif()
 
-option( DYN_FLUIDSYNTH "Dynamically load fluidsynth" ON )
-option( DYN_OPENAL "Dynamically load OpenAL" ON )
-option( DYN_SNDFILE "Dynamically load libsndfile" ON )
-option( DYN_MPG123 "Dynamically load libmpg123" ON )
-
 if( APPLE )
     option( OSX_COCOA_BACKEND "Use native Cocoa backend instead of SDL" ON )
 endif()
@@ -209,26 +204,7 @@ endif()
 
 if( NO_OPENAL )
 	add_definitions( -DNO_OPENAL=1 )
-
-	set(MPG123_FOUND NO)
-	set(SNDFILE_FOUND NO)
-else()
-	# Search for libSndFile
-
-	if ( NOT DYN_SNDFILE )
-		find_package( SndFile )
-	endif()
-
-	# Search for libmpg123
-
-	if ( NOT DYN_MPG123 )
-		find_package( MPG123 )
-	endif()
 endif()
-
-# Search for FluidSynth
-
-find_package( FluidSynth )
 
 # Decide on SSE setup
 
@@ -425,15 +401,8 @@ if( NOT STRUPR_EXISTS )
 	add_definitions( -DNEED_STRUPR=1 )
 endif()
 
-CHECK_FUNCTION_EXISTS( stricmp STRICMP_EXISTS )
-if( NOT STRICMP_EXISTS )
-	add_definitions( -Dstricmp=strcasecmp )
-endif()
-
-CHECK_FUNCTION_EXISTS( strnicmp STRNICMP_EXISTS )
-if( NOT STRNICMP_EXISTS )
-	add_definitions( -Dstrnicmp=strncasecmp )
-endif()
+require_stricmp()
+require_strnicmp()
 
 if( NOT MSVC )
 	add_definitions( -D__forceinline=inline )
@@ -457,18 +426,17 @@ endif()
 # Update gitinfo.h
 
 add_custom_target( revision_check ALL
-	COMMAND updaterevision src/gitinfo.h
+	COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_SOURCE_DIR}/tools/updaterevision/UpdateRevision.cmake" src/gitinfo.h
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-	DEPENDS updaterevision )
+)
 
 # Libraries ZDoom needs
 
-message( STATUS "Fluid synth libs: ${FLUIDSYNTH_LIBRARIES}" )
 set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ZLIB_LIBRARIES}" "${JPEG_LIBRARIES}" "${BZIP2_LIBRARIES}" "${GME_LIBRARIES}" "${CMAKE_DL_LIBS}" )
 if (HAVE_VULKAN)
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} "glslang" "SPIRV" "OGLCompiler")
 endif()
-include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${GME_INCLUDE_DIR}" "${ADL_INCLUDE_DIR}" "${OPN_INCLUDE_DIR}" "${TIMIDITYPP_INCLUDE_DIR}" "${TIMIDITY_INCLUDE_DIR}" "${WILDMIDI_INCLUDE_DIR}" "${OPLSYNTH_INCLUDE_DIR}" )
+include_directories( "${ZLIB_INCLUDE_DIR}" "${BZIP2_INCLUDE_DIR}" "${LZMA_INCLUDE_DIR}" "${JPEG_INCLUDE_DIR}" "${ZMUSIC_INCLUDE_DIR}" )
 
 if( ${HAVE_VM_JIT} )
 	add_definitions( -DHAVE_VM_JIT )
@@ -476,27 +444,9 @@ if( ${HAVE_VM_JIT} )
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} "${ASMJIT_LIBRARIES}")
 endif()
 
-if( SNDFILE_FOUND )
-    set( ZDOOM_LIBS ${ZDOOM_LIBS} "${SNDFILE_LIBRARIES}" )
-    include_directories( "${SNDFILE_INCLUDE_DIRS}" )
-endif()
-if( MPG123_FOUND )
-    set( ZDOOM_LIBS ${ZDOOM_LIBS} "${MPG123_LIBRARIES}" )
-    include_directories( "${MPG123_INCLUDE_DIR}" )
-endif()
-if( NOT DYN_FLUIDSYNTH )
-	if( FLUIDSYNTH_FOUND )
-		set( ZDOOM_LIBS ${ZDOOM_LIBS} "${FLUIDSYNTH_LIBRARIES}" )
-		include_directories( "${FLUIDSYNTH_INCLUDE_DIR}" )
-	endif()
-endif()
-
 # Start defining source files for ZDoom
 set( PLAT_WIN32_SOURCES
-	sound/mididevices/music_win_mididevice.cpp
 	win32/hardware.cpp
-	win32/helperthread.cpp
-	win32/i_cd.cpp
 	win32/i_crash.cpp
 	win32/i_input.cpp
 	win32/i_keyboard.cpp
@@ -508,18 +458,20 @@ set( PLAT_WIN32_SOURCES
 	win32/i_system.cpp
 	win32/i_specialpaths.cpp
 	win32/st_start.cpp
+	win32/st_start_util.cpp
 	win32/gl_sysfb.cpp
 	win32/base_sysfb.cpp
 	win32/win32basevideo.cpp
-	win32/win32glvideo.cpp)
+	win32/win32glvideo.cpp
+	win32/win32polyvideo.cpp)
 	
 if (HAVE_VULKAN)
 	set (PLAT_WIN32_SOURCES ${PLAT_WIN32_SOURCES} win32/win32vulkanvideo.cpp )
 endif()
 	
 set( PLAT_POSIX_SOURCES
-	posix/i_cd.cpp
-	posix/i_steam.cpp )
+	posix/i_steam.cpp
+	posix/i_system_posix.cpp )
 set( PLAT_SDL_SOURCES
 	posix/sdl/crashcatcher.c
 	posix/sdl/hardware.cpp
@@ -545,7 +497,6 @@ set( PLAT_COCOA_SOURCES
 	posix/cocoa/i_input.mm
 	posix/cocoa/i_joystick.cpp
 	posix/cocoa/i_main.mm
-	posix/cocoa/i_main_except.cpp
 	posix/cocoa/i_system.mm
 	posix/cocoa/i_video.mm
 	posix/cocoa/st_console.mm
@@ -633,24 +584,6 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
-if( DYN_SNDFILE)
-	add_definitions( -DHAVE_SNDFILE -DDYN_SNDFILE )
-elseif( SNDFILE_FOUND )
-	add_definitions( -DHAVE_SNDFILE )
-endif()
-
-if( DYN_MPG123)
-	add_definitions( -DHAVE_MPG123 -DDYN_MPG123 )
-elseif( MPG123_FOUND )
-	add_definitions( -DHAVE_MPG123 )
-endif()
-
-if( DYN_FLUIDSYNTH )
-	add_definitions( -DHAVE_FLUIDSYNTH -DDYN_FLUIDSYNTH )
-elseif( FLUIDSYNTH_FOUND )
-	add_definitions( -DHAVE_FLUIDSYNTH )
-endif()
-
 option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
 
 if( NOT SEND_ANON_STATS )
@@ -711,7 +644,7 @@ file( GLOB HEADER_FILES
 	rendering/polyrenderer/*.h
 	rendering/polyrenderer/math/*.h
 	rendering/polyrenderer/drawers/*.h
-	rendering/polyrenderer/scene/*.h
+	rendering/polyrenderer/backend/*.h
 	rendering/hwrenderer/data/*.h
 	rendering/hwrenderer/dynlights/*.h
 	rendering/hwrenderer/models/*.h
@@ -783,26 +716,12 @@ set ( SWRENDER_SOURCES
 )
 
 set( POLYRENDER_SOURCES
-	rendering/polyrenderer/poly_renderer.cpp
-	rendering/polyrenderer/poly_renderthread.cpp
-	rendering/polyrenderer/scene/poly_scene.cpp
-	rendering/polyrenderer/scene/poly_portal.cpp
-	rendering/polyrenderer/scene/poly_cull.cpp
-	rendering/polyrenderer/scene/poly_decal.cpp
-	rendering/polyrenderer/scene/poly_particle.cpp
-	rendering/polyrenderer/scene/poly_plane.cpp
-	rendering/polyrenderer/scene/poly_playersprite.cpp
-	rendering/polyrenderer/scene/poly_wall.cpp
-	rendering/polyrenderer/scene/poly_wallsprite.cpp
-	rendering/polyrenderer/scene/poly_sprite.cpp
-	rendering/polyrenderer/scene/poly_model.cpp
-	rendering/polyrenderer/scene/poly_sky.cpp
-	rendering/polyrenderer/scene/poly_light.cpp
-	rendering/polyrenderer/drawers/poly_buffer.cpp
 	rendering/polyrenderer/drawers/poly_triangle.cpp
-	rendering/polyrenderer/drawers/poly_draw_args.cpp
+	rendering/polyrenderer/drawers/poly_thread.cpp
 	rendering/polyrenderer/drawers/screen_triangle.cpp
-	rendering/polyrenderer/math/gpu_types.cpp
+	rendering/polyrenderer/drawers/screen_scanline_setup.cpp
+	rendering/polyrenderer/drawers/screen_shader.cpp
+	rendering/polyrenderer/drawers/screen_blend.cpp
 )
 
 # These files will be flagged as "headers" so that they appear in project files
@@ -820,6 +739,7 @@ set( NOT_COMPILED_SOURCE_FILES
 	scripting/zscript/zcc-parse.lemon
 	zcc-parse.c
 	zcc-parse.h
+	win32/zdoom.natvis
 )
 
 set( VM_JIT_SOURCES
@@ -842,10 +762,8 @@ set( FASTMATH_SOURCES
 	rendering/swrenderer/r_all.cpp
 	rendering/swrenderer/r_swscene.cpp
 	rendering/polyrenderer/poly_all.cpp
-	sound/backend/mpg123_decoder.cpp
 	sound/music/music_midi_base.cpp
 	sound/backend/oalsound.cpp
-	sound/backend/sndfile_decoder.cpp
 	gamedata/textures/hires/hqnx/init.cpp
 	gamedata/textures/hires/hqnx/hq2x.cpp
 	gamedata/textures/hires/hqnx/hq3x.cpp
@@ -899,6 +817,14 @@ set (VULKAN_SOURCES
 if (HAVE_VULKAN)
 	set (FASTMATH_SOURCES ${FASTMATH_SOURCES} ${VULKAN_SOURCES})
 endif()
+
+set (POLYBACKEND_SOURCES
+	rendering/polyrenderer/backend/poly_framebuffer.cpp
+	rendering/polyrenderer/backend/poly_buffers.cpp
+	rendering/polyrenderer/backend/poly_hwtexture.cpp
+	rendering/polyrenderer/backend/poly_renderstate.cpp
+)
+set (FASTMATH_SOURCES ${FASTMATH_SOURCES} ${POLYBACKEND_SOURCES})
 
 set (PCH_SOURCES
 	am_map.cpp
@@ -964,7 +890,9 @@ set (PCH_SOURCES
 	rendering/r_videoscale.cpp
 	sound/s_advsound.cpp
 	sound/s_environment.cpp
+	sound/s_reverbedit.cpp
 	sound/s_sndseq.cpp
+	sound/s_doomsound.cpp
 	sound/s_sound.cpp
 	sound/s_music.cpp
 	serializer.cpp
@@ -1081,6 +1009,7 @@ set (PCH_SOURCES
 	maploader/polyobjects.cpp
 	maploader/renderinfo.cpp
 	maploader/compatibility.cpp
+	maploader/postprocessor.cpp
 	menu/joystickmenu.cpp
 	menu/loadsavemenu.cpp
 	menu/menu.cpp
@@ -1126,6 +1055,7 @@ set (PCH_SOURCES
 	gamedata/textures/formats/emptytexture.cpp
 	gamedata/textures/formats/shadertexture.cpp
 	gamedata/textures/formats/tgatexture.cpp
+	gamedata/textures/formats/stbtexture.cpp
 	gamedata/textures/hires/hqresize.cpp
 	gamedata/textures/hires/hirestex.cpp
 	gamedata/fonts/singlelumpfont.cpp
@@ -1193,30 +1123,7 @@ set (PCH_SOURCES
 	sound/music/i_music.cpp
 	sound/music/i_soundfont.cpp
 	sound/backend/i_sound.cpp
-	sound/mididevices/midi_cvars.cpp
-	sound/mididevices/music_base_mididevice.cpp
-	sound/mididevices/music_adlmidi_mididevice.cpp
-	sound/mididevices/music_opl_mididevice.cpp
-	sound/mididevices/music_opnmidi_mididevice.cpp
-	sound/mididevices/music_timiditypp_mididevice.cpp
-	sound/mididevices/music_fluidsynth_mididevice.cpp
-	sound/mididevices/music_softsynth_mididevice.cpp
-	sound/mididevices/music_timidity_mididevice.cpp
-	sound/mididevices/music_wildmidi_mididevice.cpp
-	sound/mididevices/music_wavewriter_mididevice.cpp
-	sound/midisources/midisource.cpp
-	sound/midisources/midisource_mus.cpp
-	sound/midisources/midisource_smf.cpp
-	sound/midisources/midisource_hmi.cpp
-	sound/midisources/midisource_xmi.cpp
-	sound/musicformats/music_cd.cpp
-	sound/musicformats/music_dumb.cpp
-	sound/musicformats/music_gme.cpp
-	sound/musicformats/music_libsndfile.cpp
-	sound/musicformats/music_midistream.cpp
-	sound/musicformats/music_opl.cpp
-	sound/musicformats/music_stream.cpp
-	sound/musicformats/music_xa.cpp
+	sound/music/music_config.cpp
 	rendering/swrenderer/textures/r_swtexture.cpp
 	rendering/swrenderer/textures/warptexture.cpp
 	rendering/swrenderer/textures/swcanvastexture.cpp
@@ -1236,10 +1143,8 @@ set (PCH_SOURCES
 	utility/nodebuilder/nodebuild_utility.cpp
 	utility/sc_man.cpp
 	utility/stats.cpp
-	utility/atterm.cpp
 	utility/cmdlib.cpp
 	utility/configfile.cpp
-	utility/i_module.cpp
 	utility/i_time.cpp
 	utility/m_alloc.cpp
 	utility/m_argv.cpp
@@ -1274,6 +1179,7 @@ add_executable( zdoom WIN32 MACOSX_BUNDLE
 	utility/x86.cpp
 	utility/strnatcmp.c
 	utility/zstring.cpp
+	utility/dictionary.cpp
 	utility/math/asin.c
 	utility/math/atan.c
 	utility/math/const.c
@@ -1317,9 +1223,9 @@ if( SWITCH_LIBNX )
 	include_directories( ${CMAKE_SOURCE_DIR}/nx/gdtoa )
 	LIST( REMOVE_ITEM ZDOOM_LIBS dl )
 	set( ZDOOM_LIBS ${ZDOOM_LIBS} vorbisfile vorbisenc vorbis ogg mpg123 flac opus EGL glapi drm_nouveau nx )
-	target_link_libraries( zdoom gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth ${ZDOOM_LIBS} )
+	target_link_libraries( zdoom gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth zmusic ${ZDOOM_LIBS} )
 else()
-	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth )
+	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa dumb lzma adl opn timidity timidityplus wildmidi oplsynth zmusic )
 endif()
 
 include_directories( .
@@ -1345,7 +1251,6 @@ include_directories( .
 	rendering
 	rendering/vulkan/thirdparty
 	../libraries/gdtoa
-	../libraries/dumb/include
 	../libraries/glslang/glslang/Public
 	../libraries/glslang/spirv
 	${CMAKE_BINARY_DIR}/libraries/gdtoa
@@ -1454,8 +1359,6 @@ install(TARGETS zdoom
 
 source_group("Audio Files" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/.+")
 source_group("Audio Files\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/backend/.+")
-source_group("Audio Files\\MIDI Devices" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/mididevices/.+")
-source_group("Audio Files\\MIDI Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/midisources/.+")
 source_group("Audio Files\\Music formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/musicformats/.+")
 source_group("Audio Files\\Third-party" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/sound/thirdparty/.+")
 source_group("Game Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/gamedata/.+")
@@ -1515,7 +1418,7 @@ source_group("Rendering\\Software Renderer\\Viewport" REGULAR_EXPRESSION "^${CMA
 source_group("Rendering\\Poly Renderer" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/.+")
 source_group("Rendering\\Poly Renderer\\Math" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/math/.+")
 source_group("Rendering\\Poly Renderer\\Drawers" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/drawers/.+")
-source_group("Rendering\\Poly Renderer\\Scene" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/scene/.+")
+source_group("Rendering\\Poly Renderer\\Backend" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/rendering/polyrenderer/backend/.+")
 source_group("Render Data" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/.+")
 source_group("Render Data\\Models" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/r_data/models/.+")
 source_group("Render Interface" FILES r_defs.h r_renderer.h r_sky.cpp r_sky.h r_state.h r_utility.cpp r_utility.h)

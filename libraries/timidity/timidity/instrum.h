@@ -1,4 +1,7 @@
 #pragma once
+
+#include "../../music_common/fileio.h"
+
 namespace Timidity
 {
 /*
@@ -164,18 +167,18 @@ public:
 class Instruments
 {
 public:
-	SoundFontReaderInterface *sfreader;
+	MusicIO::SoundFontReaderInterface *sfreader;
 	ToneBank* tonebank[MAXBANK] = {};
 	ToneBank* drumset[MAXBANK] = {};
 	FontFile* Fonts = nullptr;
 	std::string def_instr_name;
 
-	Instruments(SoundFontReaderInterface* reader);
+	Instruments(MusicIO::SoundFontReaderInterface* reader);
 	~Instruments();
 
 	int LoadConfig() { return read_config_file(nullptr); }
 	int read_config_file(const char* name);
-	int LoadDMXGUS(int gus_memsize);
+	int LoadDMXGUS(int gus_memsize, const char *dmxgusdata, size_t dmxgussize);
 
 	void font_freeall();
 	FontFile* font_find(const char* filename);

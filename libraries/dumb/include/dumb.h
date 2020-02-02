@@ -802,7 +802,6 @@ DUH *make_duh(
 
 void DUMBEXPORT duh_set_length(DUH *duh, int32 length);
 
-
 #ifdef __cplusplus
 	}
 #endif

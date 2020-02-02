@@ -1,10 +1,32 @@
+/*
+**  Vulkan backend
+**  Copyright (c) 2016-2020 Magnus Norddahl
+**
+**  This software is provided 'as-is', without any express or implied
+**  warranty.  In no event will the authors be held liable for any damages
+**  arising from the use of this software.
+**
+**  Permission is granted to anyone to use this software for any purpose,
+**  including commercial applications, and to alter it and redistribute it
+**  freely, subject to the following restrictions:
+**
+**  1. The origin of this software must not be misrepresented; you must not
+**     claim that you wrote the original software. If you use this software
+**     in a product, an acknowledgment in the product documentation would be
+**     appreciated but is not required.
+**  2. Altered source versions must be plainly marked as such, and must not be
+**     misrepresented as being the original software.
+**  3. This notice may not be removed or altered from any source distribution.
+**
+*/
 
 #include "vk_swapchain.h"
 #include "vk_objects.h"
 #include "c_cvars.h"
 #include "version.h"
+#include "v_video.h"
+#include "vk_framebuffer.h"
 
-EXTERN_CVAR(Bool, vid_vsync);
 
 CVAR(Bool, vk_hdr, false, CVAR_ARCHIVE | CVAR_GLOBALCONFIG);
 
@@ -21,12 +43,13 @@ VulkanSwapChain::~VulkanSwapChain()
 
 uint32_t VulkanSwapChain::AcquireImage(int width, int height, VulkanSemaphore *semaphore, VulkanFence *fence)
 {
-	if (lastSwapWidth != width || lastSwapHeight != height || lastVsync != vid_vsync || lastHdr != vk_hdr || !swapChain)
+	auto vsync = static_cast<VulkanFrameBuffer*>(screen)->cur_vsync;
+	if (lastSwapWidth != width || lastSwapHeight != height || lastVsync != vsync || lastHdr != vk_hdr || !swapChain)
 	{
 		Recreate();
 		lastSwapWidth = width;
 		lastSwapHeight = height;
-		lastVsync = vid_vsync;
+		lastVsync = vsync;
 		lastHdr = vk_hdr;
 	}
 
@@ -271,7 +294,8 @@ void VulkanSwapChain::SelectPresentMode()
 		VulkanError("No surface present modes supported");
 
 	swapChainPresentMode = VK_PRESENT_MODE_FIFO_KHR;
-	if (vid_vsync)
+	auto vsync = static_cast<VulkanFrameBuffer*>(screen)->cur_vsync;
+	if (vsync)
 	{
 		bool supportsFifoRelaxed = std::find(presentModes.begin(), presentModes.end(), VK_PRESENT_MODE_FIFO_RELAXED_KHR) != presentModes.end();
 		if (supportsFifoRelaxed)

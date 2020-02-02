@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-extern short *DUMBCALLBACK dumb_decode_vorbis(int outlen, const void *oggstream, int sizebytes);
+short * dumb_decode_vorbis(int outlen, const void *oggstream, int sizebytes);
 
 /** TODO:
 

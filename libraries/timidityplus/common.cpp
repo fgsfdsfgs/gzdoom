@@ -39,7 +39,7 @@ void *safe_malloc(size_t count)
 	auto p = malloc(count);
 	if (p == nullptr)
 	{
-		// I_FatalError("Out of memory");
+		abort();
 	}
 	return p;
 }
@@ -54,7 +54,7 @@ void *safe_realloc(void *ptr, size_t count)
 	auto p = realloc(ptr, count);
 	if (p == nullptr)
 	{
-		// I_FatalError("Out of memory");
+		abort();
 	}
 	return p;
 }
@@ -62,13 +62,11 @@ void *safe_realloc(void *ptr, size_t count)
 char *safe_strdup(const char *s)
 {
 	if (s == nullptr) s = "";
-	char *p = (char *)malloc(strlen(s)+1);
+	auto p = strdup(s);
 	if (p == nullptr)
 	{
-		// I_FatalError("Out of memory");
-		return p;
+		abort();
 	}
-	strcpy(p, s);
 	return p;
 }
 
@@ -131,27 +129,27 @@ double flt_rand()
 	return (int)GenRand_Real1();
 }
 
-struct timidity_file *open_file(const char *name, SoundFontReaderInterface *sfreader)
+timidity_file *open_file(const char *name, MusicIO::SoundFontReaderInterface *sfreader)
 {
-	return sfreader->open_timidityplus_file(name);
+	return sfreader->open_file(name);
 }
 
 /* This closes files opened with open_file */
-void tf_close(struct timidity_file *tf)
+void tf_close(timidity_file *tf)
 {
 	if (tf) tf->close();
 }
 
 /* This is meant for skipping a few bytes. */
-void skip(struct timidity_file *tf, size_t len)
+void skip(timidity_file *tf, size_t len)
 {
 	tf_seek(tf, (long)len, SEEK_CUR);
 }
 
-int tf_getc(struct timidity_file *tf)
+int tf_getc(timidity_file *tf)
 {
 	unsigned char c;
-	auto read = tf_read(&c, 1, 1, tf);
+	auto read = tf_read(&c, 1, tf);
 	return read == 0 ? EOF : c;
 }
 

@@ -50,7 +50,6 @@
 #include "g_levellocals.h"
 #include "events.h"
 #include "i_system.h"
-#include "atterm.h"
 
 static TArray<cluster_info_t> wadclusterinfos;
 TArray<level_info_t> wadlevelinfos;
@@ -2163,17 +2162,6 @@ void FMapInfoParser::ParseEpisodeInfo ()
 
 //==========================================================================
 //
-// Clears episode definitions
-//
-//==========================================================================
-
-void ClearEpisodes()
-{
-	AllEpisodes.Clear();
-}
-
-//==========================================================================
-//
 // SetLevelNum
 // Avoid duplicate levelnums. The level being set always has precedence.
 //
@@ -2277,7 +2265,7 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 		}
 		else if (sc.Compare("clearepisodes"))
 		{
-			ClearEpisodes();
+			AllEpisodes.Clear();
 		}
 		else if (sc.Compare("skill"))
 		{
@@ -2387,11 +2375,11 @@ void FMapInfoParser::ParseMapInfo (int lump, level_info_t &gamedefaults, level_i
 
 void DeinitIntermissions();
 
-static void ClearMapinfo()
+void G_ClearMapinfo()
 {
 	wadclusterinfos.Clear();
 	wadlevelinfos.Clear();
-	ClearEpisodes();
+	AllEpisodes.Clear();
 	AllSkills.Clear();
 	DefaultSkill = -1;
 	DeinitIntermissions();
@@ -2412,9 +2400,6 @@ void G_ParseMapInfo (FString basemapinfo)
 {
 	int lump, lastlump = 0;
 	level_info_t gamedefaults;
-
-	ClearMapinfo();
-	atterm(ClearMapinfo);
 
 	// Parse the default MAPINFO for the current game. This lump *MUST* come from zdoom.pk3.
 	if (basemapinfo.IsNotEmpty())

@@ -141,6 +141,7 @@ void FTextureManager::DeleteAll()
 	}
 	mAnimatedDoors.Clear();
 	BuildTileData.Clear();
+	tmanips.Clear();
 }
 
 //==========================================================================
@@ -824,19 +825,19 @@ void FTextureManager::ParseTextureDef(int lump, FMultipatchTextureBuilder &build
 		}
 		else if (sc.Compare("sprite"))
 		{
-		build.ParseTexture(sc, ETextureType::Sprite);
+			build.ParseTexture(sc, ETextureType::Sprite);
 		}
 		else if (sc.Compare("walltexture"))
 		{
-		build.ParseTexture(sc, ETextureType::Wall);
+			build.ParseTexture(sc, ETextureType::Wall);
 		}
 		else if (sc.Compare("flat"))
 		{
-		build.ParseTexture(sc, ETextureType::Flat);
+			build.ParseTexture(sc, ETextureType::Flat);
 		}
 		else if (sc.Compare("graphic"))
 		{
-		build.ParseTexture(sc, ETextureType::MiscPatch);
+			build.ParseTexture(sc, ETextureType::MiscPatch);
 		}
 		else if (sc.Compare("#include"))
 		{

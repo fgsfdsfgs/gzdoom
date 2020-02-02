@@ -123,7 +123,7 @@ struct SFOrder {
 	((int)(((unsigned)bank ^ (unsigned)preset ^ (unsigned)keynote) % INSTHASHSIZE))
 
 struct SFInsts {
-	struct timidity_file *tf;
+	timidity_file *tf;
 	char *fname;
 	int8_t def_order, def_cutoff_allowed, def_resonance_allowed;
 	uint16_t version, minorversion;
@@ -550,7 +550,7 @@ Instrument *Instruments::load_from_file(SFInsts *rec, InstList *ip)
 		sample->data_alloced = 1;
 
 		tf_seek(rec->tf, sp->start, SEEK_SET);
-		tf_read(sample->data, sp->len, 1, rec->tf);
+		tf_read(sample->data, sp->len, rec->tf);
 
 #ifdef _BIG_ENDIAN_
 		tmp = (int16_t*)sample->data;

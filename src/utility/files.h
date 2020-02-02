@@ -154,6 +154,14 @@ public:
 		return *this;
 	}
 
+	// This is for wrapping the actual reader for custom access where a managed FileReader won't work. 
+	FileReaderInterface* GetInterface()
+	{
+		auto i = mReader;
+		mReader = nullptr;
+		return i;
+	}
+
 
 	~FileReader()
 	{
@@ -327,5 +335,6 @@ public:
 	virtual size_t Write(const void *buffer, size_t len) override;
 	TArray<unsigned char> *GetBuffer() { return &mBuffer; }
 };
+
 
 #endif
