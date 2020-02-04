@@ -9,7 +9,9 @@
 
 #ifndef _WIN32
 #include <strings.h>
+#ifndef __SWITCH__
 #define stricmp strcasecmp
+#endif
 #endif
 
 namespace Timidity

@@ -62,11 +62,12 @@ void *safe_realloc(void *ptr, size_t count)
 char *safe_strdup(const char *s)
 {
 	if (s == nullptr) s = "";
-	auto p = strdup(s);
+	char *p = (char *)malloc(strlen(s)+1);
 	if (p == nullptr)
 	{
 		abort();
 	}
+	strcpy(p, s);
 	return p;
 }
 

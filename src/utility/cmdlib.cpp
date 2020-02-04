@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <pwd.h>
-#if !defined(__sun)
+#if !defined(__sun) && !defined(__SWITCH__)
 #include <fts.h>
 #endif
 #endif

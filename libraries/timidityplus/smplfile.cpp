@@ -25,7 +25,9 @@
 #include <stdlib.h>
 #include <math.h>
 
+#ifdef __SWITCH__
 #include <strings.h> // fgsfds: why do I have to do this?
+#endif
 #include <string.h>
 
 #include "timidity.h"

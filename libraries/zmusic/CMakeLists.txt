@@ -129,6 +129,11 @@ if(ALSA_FOUND)
 	target_link_libraries( zmusic ${ALSA_LIBRARIES} )
 endif()
 
+if( SWITCH_LIBNX )
+	# fgs: how the fuck was this even supposed to work? should these be set in sndfile.pc?
+	target_link_libraries( zmusic vorbisfile vorbisenc vorbis ogg mpg123 flac opus )
+endif()
+
 source_group("MIDI Devices" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/mididevices/.+")
 source_group("MIDI Sources" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/midisources/.+")
 source_group("Music Formats" REGULAR_EXPRESSION "^${CMAKE_CURRENT_SOURCE_DIR}/musicformats/.+")

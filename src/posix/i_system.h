@@ -150,6 +150,10 @@ static inline char *strlwr(char *str)
 	}
 	return str;
 }
+#else
+// Shows OSK applet, collects input into out[]. Blocks until done.
+// Returns false if the user canceled out of the dialog, true otherwise.
+bool I_OnScreenKeyboard(const char *hint, char *out, int outlen);
 #endif
 
 inline int I_GetNumaNodeCount() { return 1; }

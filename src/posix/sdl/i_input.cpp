@@ -551,7 +551,7 @@ void MessagePump (const SDL_Event &sev)
 			case 13:	event.data1 = GK_UP;		break;
 			case 15:	event.data1 = GK_DOWN;		break;
 			case 3:		event.data1 = GK_DEL;		break;
-			case 2:		event.data1 = SDLK_BACKSPACE;		break;
+			case 2:		event.data1 = '\b';		break;
 			case 10:	event.data1 = GK_ESCAPE;	break;
 			default: break;
 			}

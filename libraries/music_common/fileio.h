@@ -25,6 +25,9 @@
 #pragma once
 #include <stdio.h>
 #include <string.h>
+#ifdef __SWITCH__
+#include <strings.h> // stricmp()
+#endif
 #include <vector>
 #include <string>
 
@@ -35,6 +38,17 @@ enum
 {
 	CP_UTF8 = 65001
 };
+#endif
+
+#ifdef __SWITCH__
+// TODO: find a better place for this
+#include <stdlib.h>
+inline char *strdup(const char *src)
+{
+	char *newstr = (char *)calloc(1, strlen(src) + 1);
+	if (newstr) strcpy(newstr, src);
+	return newstr;
+}
 #endif
 
 namespace MusicIO

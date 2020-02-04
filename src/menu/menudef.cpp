@@ -1653,7 +1653,6 @@ DEFINE_ACTION_FUNCTION(DMenu, TouchKeyboardInput)
 	PARAM_STRING(init);
 	PARAM_INT(maxlen);
 #ifdef __SWITCH__
-	extern bool I_OnScreenKeyboard(const char *, char *, int);
 	static char buf[4096];
 	if (init[0]) strncpy(buf, init, sizeof(buf)-1);
 	int sz = maxlen > sizeof(buf)-1 ? sizeof(buf)-1 : maxlen;
