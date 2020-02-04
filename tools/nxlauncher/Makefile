@@ -46,7 +46,7 @@ ROMFS		:=	res
 
 APP_TITLE	:=	GZDoom Launcher
 APP_AUTHOR	:=	fgsfds
-APP_VERSION	:=	nx4.3pre-5
+APP_VERSION	:=	nx4.4pre-6
 
 #---------------------------------------------------------------------------------
 # options for code generation

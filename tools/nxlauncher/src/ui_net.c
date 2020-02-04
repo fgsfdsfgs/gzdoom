@@ -41,7 +41,7 @@ static struct Option net_opts[] =
             3, 0,
         },
     },
-    { OPT_INTEGER, "Number of players", .inum = { 1, 4, 1, 1 } },
+    { OPT_INTEGER, "Number of players", .inum = { 1, 8, 1, 1 } },
     { OPT_CALLBACK, "Host game", .cb = DoHost },
 };
 
