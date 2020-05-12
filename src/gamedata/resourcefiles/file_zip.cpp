@@ -388,10 +388,6 @@ FZipFile::~FZipFile()
 FCompressedBuffer FZipLump::GetRawData()
 {
 	FCompressedBuffer cbuf = { (unsigned)LumpSize, (unsigned)CompressedSize, Method, GPFlags, CRC32, new char[CompressedSize] };
-#ifdef __SWITCH__
-	// work around the fseek bug
-	Owner->Reader.Seek(0, FileReader::SeekSet);
-#endif
 	if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 	Owner->Reader.Seek(Position, FileReader::SeekSet);
 	Owner->Reader.Read(cbuf.mBuffer, CompressedSize);
@@ -430,10 +426,6 @@ FileReader *FZipLump::GetReader()
 	// In that case always force caching of the lump
 	if (Method == METHOD_STORED)
 	{
-#ifdef __SWITCH__
-		// work around the fseek bug
-		Owner->Reader.Seek(0, FileReader::SeekSet);
-#endif
 		if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 		Owner->Reader.Seek(Position, FileReader::SeekSet);
 		return &Owner->Reader;
@@ -449,11 +441,6 @@ FileReader *FZipLump::GetReader()
 
 int FZipLump::FillCache()
 {
-#ifdef __SWITCH__
-	// work around the fseek bug
-	Owner->Reader.Seek(0, FileReader::SeekSet);
-#endif
-
 	if (Flags & LUMPFZIP_NEEDFILESTART) SetLumpAddress();
 	const char *buffer;
 
