@@ -38,10 +38,12 @@
 #include <unistd.h>
 #include <signal.h>
 #include <new>
-#include <sys/param.h>
 #include <locale.h>
 #include <sys/stat.h>
+#ifndef __SWITCH__
 #include <sys/utsname.h>
+#include <sys/param.h>
+#endif
 
 #include "engineerrors.h"
 #include "m_argv.h"
@@ -98,6 +100,9 @@ void I_DetectOS()
 {
 	FString operatingSystem;
 
+#ifdef __SWITCH__
+	operatingSystem = "Nintendo Switch";
+#else
 	const char *paths[] = {"/etc/os-release", "/usr/lib/os-release"};
 
 	for (const char *path : paths)
@@ -137,6 +142,7 @@ void I_DetectOS()
 		const char* const separator = operatingSystem.Len() > 0 ? ", " : "";
 		operatingSystem.AppendFormat("%s%s %s on %s", separator, unameInfo.sysname, unameInfo.release, unameInfo.machine);
 	}
+#endif
 
 	if (operatingSystem.Len() > 0)
 		Printf("OS: %s\n", operatingSystem.GetChars());
@@ -146,16 +152,17 @@ void I_StartupJoysticks();
 
 int main (int argc, char **argv)
 {
-#if !defined (__APPLE__)
+#if !defined (__APPLE__) && !defined(__SWITCH__)
 	{
 		int s[4] = { SIGSEGV, SIGILL, SIGFPE, SIGBUS };
 		cc_install_handlers(argc, argv, 4, s, GAMENAMELOWERCASE "-crash.log", GetCrashInfo);
 	}
-#endif // !__APPLE__
+#endif // !__APPLE__ && !__SWITCH__
 
 	printf(GAMENAME" %s - %s - SDL version\nCompiled on %s\n",
 		GetVersionString(), GetGitTime(), __DATE__);
 
+#ifndef __SWITCH__
 	seteuid (getuid ());
 	// Set LC_NUMERIC environment variable in case some library decides to
 	// clear the setlocale call at least this will be correct.
@@ -163,6 +170,7 @@ int main (int argc, char **argv)
 	setenv ("LC_NUMERIC", "C", 1);
 
 	setlocale (LC_ALL, "C");
+#endif
 
 	if (SDL_Init (0) < 0)
 	{
@@ -174,9 +182,17 @@ int main (int argc, char **argv)
 	
 	Args = new FArgs(argc, argv);
 
+#ifdef __SWITCH__
+	// HACK: force GL4.3 since that's the max available on Switch
+	Args->AppendArg("-glversion");
+	Args->AppendArg("4.3");
+#endif // __SWITCH__
+
 	// Should we even be doing anything with progdir on Unix systems?
 	char program[PATH_MAX];
+#ifndef __SWITCH__
 	if (realpath (argv[0], program) == NULL)
+#endif
 		strcpy (program, argv[0]);
 	char *slash = strrchr (program, '/');
 	if (slash != NULL)

@@ -78,6 +78,10 @@ class TextEnterMenu : Menu
 		AllowColors = allowcolors; // [TP]
 		displayFont = dpf;
 		CursorSize = displayFont.StringWidth(displayFont.GetCursor());
+		if (TouchKeyboardAvailable())
+		{
+			mEnterString = TouchKeyboardInput("Input value", textbuffer, maxlen);
+		}
 	}
 
 	// This had to be deprecated because the unit for maxlen is 8 pixels.

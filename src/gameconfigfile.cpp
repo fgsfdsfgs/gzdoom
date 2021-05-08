@@ -109,6 +109,9 @@ FGameConfigFile::FGameConfigFile ()
 		SetValueForKey ("Path", user_app_support, true);
 		SetValueForKey ("Path", "$PROGDIR", true);
 		SetValueForKey ("Path", local_app_support, true);
+#elif defined(__SWITCH__)
+		SetValueForKey ("Path", "$PROGDIR/iwads", true);
+		SetValueForKey ("Path", "$PROGDIR/pwads", true); // in case someone gets the bright idea
 #elif !defined(__unix__)
 		SetValueForKey ("Path", "$HOME", true);
 		SetValueForKey ("Path", "$PROGDIR", true);
@@ -133,6 +136,9 @@ FGameConfigFile::FGameConfigFile ()
 		SetValueForKey ("Path", user_app_support, true);
 		SetValueForKey ("Path", "$PROGDIR", true);
 		SetValueForKey ("Path", local_app_support, true);
+#elif defined(__SWITCH__)
+		SetValueForKey ("Path", "$PROGDIR/pwads", true);
+		SetValueForKey ("Path", "$PROGDIR/iwads", true); // in case someone gets the bright idea
 #elif !defined(__unix__)
 		SetValueForKey ("Path", "$PROGDIR", true);
 #else

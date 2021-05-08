@@ -36,6 +36,11 @@
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#elif defined __SWITCH__
+// no libdl
+#define dlopen(x, y) (NULL)
+#define dlsym(x, y) (NULL)
+#define dlclose(x) do { } while(0)
 #else
 #include <dlfcn.h>
 #endif

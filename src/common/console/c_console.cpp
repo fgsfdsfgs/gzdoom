@@ -974,6 +974,15 @@ static bool C_HandleKey (event_t *ev, FCommandBuffer &buffer)
 
 		case '\r':
 		{
+#ifdef __SWITCH__
+			// Get command string from OSK instead
+			char cmdbuf[1024];
+			cmdbuf[0] = 0;
+			// Ask for input
+			if (!I_OnScreenKeyboard("Enter command", cmdbuf, sizeof(cmdbuf)))
+				break; // no input
+			buffer.SetString(cmdbuf);
+#endif
 			// Execute command line (ENTER)
 			FString bufferText = buffer.GetText();
 

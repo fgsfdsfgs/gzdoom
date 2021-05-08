@@ -371,6 +371,11 @@ if( NOT STRUPR_EXISTS )
 	add_definitions( -DNEED_STRUPR=1 )
 endif()
 
+CHECK_FUNCTION_EXISTS( strlwr STRLWR_EXISTS )
+if( NOT STRLWR_EXISTS )
+	add_definitions( -DNEED_STRLWR=1 )
+endif()
+
 require_stricmp()
 require_strnicmp()
 
@@ -465,6 +470,10 @@ set( PLAT_SDL_SOURCES
 set( PLAT_UNIX_SOURCES
 	common/platform/posix/unix/i_specialpaths.cpp
 	common/platform/posix/unix/gtk_dialogs.cpp )
+set( PLAT_NX_SOURCES
+	common/platform/posix/nx/i_system.cpp
+	common/platform/posix/nx/st_start.cpp
+	common/platform/posix/nx/i_specialpaths.cpp )
 set( PLAT_OSX_SOURCES
 	common/platform/posix/osx/iwadpicker_cocoa.mm
 	common/platform/posix/osx/i_specialpaths.mm
@@ -500,6 +509,15 @@ elseif( APPLE )
 
 	set_source_files_properties( posix/osx/zdoom.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources )
 	set_source_files_properties( common/platform/posix/osx/iwadpicker_cocoa.mm PROPERTIES COMPILE_FLAGS -fobjc-exceptions )
+elseif( NSWITCH )
+	set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/sdl common/platform/posix/nx )
+	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_NX_SOURCES} )
+	set( OTHER_SYSTEM_SOURCES ${PLAT_WIN32_SOURCES} ${PLAT_OSX_SOURCES} ${PLAT_COCOA_SOURCES} )
+	# use our own replacements for some of the SDL sources
+	list( REMOVE_ITEM SYSTEM_SOURCES
+		common/platform/posix/sdl/i_system.cpp
+		common/platform/posix/sdl/st_start.cpp
+		common/platform/posix/sdl/crashcatcher.c )
 else()
 	set( SYSTEM_SOURCES_DIR common/platform/posix common/platform/posix/sdl )
 	set( SYSTEM_SOURCES ${PLAT_POSIX_SOURCES} ${PLAT_SDL_SOURCES} ${PLAT_UNIX_SOURCES} )
@@ -556,7 +574,7 @@ add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sc_man_scanner.h
 
 include_directories( ${CMAKE_CURRENT_BINARY_DIR} )
 
-option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" ON )
+option( SEND_ANON_STATS "Enable sending of anonymous hardware statistics" OFF )
 
 if( NOT SEND_ANON_STATS )
 	add_definitions( -DNO_SEND_STATS )
@@ -1231,7 +1249,17 @@ if( UNIX )
 	endif()
 endif()
 
-target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa lzma ${ZMUSIC_LIBRARIES} )
+if( NSWITCH )
+	list( REMOVE_ITEM ZDOOM_LIBS dl )
+	set( ZDOOM_LIBS ${ZDOOM_LIBS} EGL glapi drm_nouveau nx )
+	set( ZMUSIC_LIBRARIES ${ZMUSIC_LIBRARIES} fluidsynth mpg123 sndfile z )
+	link_directories( ${DEVKITPRO}/portlibs/switch/lib )
+	include_directories( ${CMAKE_SOURCE_DIR}/nx/gdtoa )
+	target_link_libraries( zdoom ${ZMUSIC_LIBRARIES} fluidsynth gdtoa lzma opusfile vorbisfile ogg vorbisenc vorbis opus FLAC ${ZDOOM_LIBS} )
+else()
+	message(${ZMUSIC_LIBRARIES})
+	target_link_libraries( zdoom ${ZDOOM_LIBS} gdtoa lzma ${ZMUSIC_LIBRARIES} )
+endif()
 
 include_directories( .
 	common/audio/sound
@@ -1334,6 +1362,13 @@ if( NOT WIN32 AND NOT APPLE )
 	add_custom_command( TARGET zdoom POST_BUILD
 		COMMAND chmod +x ${CMAKE_CURRENT_BINARY_DIR}/link-make
 		COMMAND /bin/sh -c ${CMAKE_CURRENT_BINARY_DIR}/link-make )
+endif()
+
+if( NSWITCH )
+	add_custom_command( TARGET zdoom POST_BUILD
+		COMMAND nacptool --create "${CMAKE_PROJECT_NAME}" \"\" \"\" "gzdoom.nacp"
+		COMMAND aarch64-none-elf-strip -o ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom
+		COMMAND elf2nro ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom.nro --icon=${CMAKE_SOURCE_DIR}/nx/gzdoom.jpg --nacp=gzdoom.nacp )
 endif()
 
 add_custom_command(TARGET zdoom POST_BUILD

@@ -52,6 +52,11 @@ bool I_WriteIniFailed ();
 class FGameTexture;
 bool I_SetCursor(FGameTexture *);
 
+#ifdef __SWITCH__
+bool I_OnScreenKeyboard(const char *hint, char *out, int outlen);
+#endif
+
+#ifdef NEED_STRLWR
 static inline char *strlwr(char *str)
 {
 	char *ptr = str;
@@ -62,6 +67,7 @@ static inline char *strlwr(char *str)
 	}
 	return str;
 }
+#endif
 
 inline int I_GetNumaNodeCount() { return 1; }
 inline int I_GetNumaNodeThreadCount(int numaNode) { return std::max<int>(std::thread::hardware_concurrency(), 1); }

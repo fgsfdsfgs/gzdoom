@@ -870,7 +870,7 @@ FString ExpandEnvVars(const char *searchpathstring)
 
 FString NicePath(const char *path)
 {
-#ifdef _WIN32
+#if defined _WIN32 || defined __SWITCH__
 	return ExpandEnvVars(path);
 #else
 	if (path == NULL || *path == '\0')

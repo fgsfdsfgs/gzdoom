@@ -62,7 +62,9 @@
 // MACROS ------------------------------------------------------------------
 
 // Requires SDL 2.0.6 or newer
-//#define SDL2_STATIC_LIBRARY
+#ifdef __SWITCH__
+#define SDL2_STATIC_LIBRARY
+#endif
 
 #if defined SDL2_STATIC_LIBRARY && defined HAVE_VULKAN
 #include <SDL_vulkan.h>
