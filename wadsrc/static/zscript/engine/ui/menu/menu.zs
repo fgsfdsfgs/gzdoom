@@ -137,9 +137,6 @@ class Menu : Object native ui version("2.4")
 	native static clearscope void SetMenu(Name mnu, int param = 0);	// This is not 100% safe but needs to be available - but always make sure to check that only the desired player opens it!
 	native static void StartMessage(String msg, int mode = 0, Name command = 'none');
 	native static void SetMouseCapture(bool on);
-	// TODO: figure out a better place for this
-	native static bool TouchKeyboardAvailable();
-	native static String TouchKeyboardInput(String hint, String init, int maxlen);
 	native void Close();
 	native void ActivateMenu();
 	

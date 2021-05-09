@@ -429,36 +429,6 @@ bool DMenu::TranslateKeyboardEvents()
 	return true;
 }
 
-// TODO: figure out a better place for this
-
-DEFINE_ACTION_FUNCTION(DMenu, TouchKeyboardAvailable)
-{
-	PARAM_PROLOGUE;
-#ifdef __SWITCH__
-	ACTION_RETURN_BOOL(true);
-#else
-	ACTION_RETURN_BOOL(false);
-#endif
-}
-
-DEFINE_ACTION_FUNCTION(DMenu, TouchKeyboardInput)
-{
-	PARAM_PROLOGUE;
-	PARAM_STRING(hint);
-	PARAM_STRING(init);
-	PARAM_INT(maxlen);
-#ifdef __SWITCH__
-	extern bool I_OnScreenKeyboard(const char *, char *, int);
-	char buf[1024];
-	if (init[0]) strncpy(buf, init, sizeof(buf)-1);
-	int sz = maxlen > sizeof(buf)-1 ? sizeof(buf)-1 : maxlen;
-	I_OnScreenKeyboard(hint, buf, sz);
-	ACTION_RETURN_STRING(buf);
-#else
-	ACTION_RETURN_STRING("");
-#endif
-}
-
 //=============================================================================
 //
 //

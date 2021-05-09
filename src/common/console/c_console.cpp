@@ -974,15 +974,6 @@ static bool C_HandleKey (event_t *ev, FCommandBuffer &buffer)
 
 		case '\r':
 		{
-#ifdef __SWITCH__
-			// Get command string from OSK instead
-			char cmdbuf[1024];
-			cmdbuf[0] = 0;
-			// Ask for input
-			if (!I_OnScreenKeyboard("Enter command", cmdbuf, sizeof(cmdbuf)))
-				break; // no input
-			buffer.SetString(cmdbuf);
-#endif
 			// Execute command line (ENTER)
 			FString bufferText = buffer.GetText();
 
@@ -1162,10 +1153,57 @@ static bool C_HandleKey (event_t *ev, FCommandBuffer &buffer)
 
 bool C_Responder (event_t *ev)
 {
-	if (ev->type != EV_GUI_Event ||
-		ConsoleState == c_up ||
+	if (ConsoleState == c_up ||
 		ConsoleState == c_rising ||
 		menuactive != MENU_Off)
+	{
+		return false;
+	}
+
+#ifdef __SWITCH__
+	// allow joystick controls
+	if (ev->type == EV_KeyDown)
+	{
+		switch (ev->data1)
+		{
+			case KEY_PAD_A:
+			{
+				// Get command string from OSK instead
+				char cmdbuf[1024];
+				cmdbuf[0] = 0;
+				// Ask for input
+				if (!I_OnScreenKeyboard("Enter command", cmdbuf, sizeof(cmdbuf)))
+					break; // no input
+				CmdLine.AddString(cmdbuf);
+				HistPos = nullptr;
+				// feed fake return
+				ev->type = EV_GUI_Event;
+				ev->subtype = EV_GUI_KeyDown;
+				ev->data1 = '\r';
+				break;
+			}
+			case KEY_PAD_X:
+				ev->type = EV_GUI_Event;
+				ev->subtype = EV_GUI_KeyDown;
+				ev->data1 = GK_BACKSPACE;
+				break;
+			case KEY_PAD_DPAD_UP:
+				ev->type = EV_GUI_Event;
+				ev->subtype = EV_GUI_KeyDown;
+				ev->data1 = GK_UP;
+				break;
+			case KEY_PAD_DPAD_DOWN:
+				ev->type = EV_GUI_Event;
+				ev->subtype = EV_GUI_KeyDown;
+				ev->data1 = GK_DOWN;
+				break;
+			default:
+				break;
+		}
+	}
+#endif
+
+	if (ev->type != EV_GUI_Event)
 	{
 		return false;
 	}
