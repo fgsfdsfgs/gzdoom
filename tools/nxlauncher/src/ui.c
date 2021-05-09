@@ -671,9 +671,8 @@ void UI_Draw(void)
     R_Print(
         P_ABOTTOM | P_XCENTER,
         SCR_CX, SCR_H - 4, C_GREY,
-        "v%s (%s), build date %s %s",
-        VERSION, BUILD_COMMIT,
-        __DATE__, __TIME__
+        "%s (%s %s)",
+        VERSION, __DATE__, __TIME__
     );
 }
 

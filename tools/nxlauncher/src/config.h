@@ -7,6 +7,9 @@
 #define TMPDIR BASEDIR "/" RELATIVE_TMPDIR
 
 #ifndef VERSION
-#define VERSION "4.6-pre"
-#define BUILD_COMMIT "switch"
+# ifdef GIT_DESCRIPTION
+#  define VERSION GIT_DESCRIPTION
+# else
+#  define VERSION "nx4.6-pre"
+# endif
 #endif

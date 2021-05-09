@@ -1366,7 +1366,7 @@ endif()
 
 if( NSWITCH )
 	add_custom_command( TARGET zdoom POST_BUILD
-		COMMAND nacptool --create "${CMAKE_PROJECT_NAME}" \"\" \"\" "gzdoom.nacp"
+		COMMAND nacptool --create "${CMAKE_PROJECT_NAME}" "${SWITCH_APP_VERSION}" \"\" "gzdoom.nacp"
 		COMMAND aarch64-none-elf-strip -o ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom
 		COMMAND elf2nro ${CMAKE_BINARY_DIR}/gzdoom_stripped ${CMAKE_BINARY_DIR}/gzdoom.nro --icon=${CMAKE_SOURCE_DIR}/nx/gzdoom.jpg --nacp=gzdoom.nacp )
 endif()

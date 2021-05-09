@@ -19,6 +19,8 @@ if( NSWITCH )
 	# our gcc11 complains about the use of alloca, stricmp, etc without including the appropriate headers
 	# unless we just do this
 	set( CMAKE_CXX_EXTENSIONS ON )
+	# used in both gzdoom and launcher
+	set( SWITCH_APP_VERSION "nx4.6pre-7" )
 endif()
 
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake )
