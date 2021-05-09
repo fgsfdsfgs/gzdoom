@@ -189,10 +189,9 @@ int main (int argc, char **argv)
 #endif // __SWITCH__
 
 	// Should we even be doing anything with progdir on Unix systems?
-	char program[PATH_MAX];
 #ifndef __SWITCH__
+	char program[PATH_MAX];
 	if (realpath (argv[0], program) == NULL)
-#endif
 		strcpy (program, argv[0]);
 	char *slash = strrchr (program, '/');
 	if (slash != NULL)
@@ -201,6 +200,7 @@ int main (int argc, char **argv)
 		progdir = program;
 	}
 	else
+#endif
 	{
 		progdir = "./";
 	}
