@@ -2,12 +2,15 @@
 #include "utils.h"
 #include "input.h"
 
+static PadState padstate;
 static u64 pad, pad_old;
 
 int IN_Init(void)
 {
-    hidScanInput();
-    pad = hidKeysHeld(CONTROLLER_P1_AUTO);
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    padInitializeDefault(&padstate);
+    padUpdate(&padstate);
+    pad = padGetButtons(&padstate);
     return 0;
 }
 
@@ -15,8 +18,8 @@ void IN_Update(void)
 {
     appletMainLoop();
     pad_old = pad;
-    hidScanInput();
-    pad = hidKeysHeld(CONTROLLER_P1_AUTO);
+    padUpdate(&padstate);
+    pad = padGetButtons(&padstate);
 }
 
 void IN_Free(void)
